@@ -1,0 +1,61 @@
+.footer {
+  border-top: 1px solid var(--border);
+  background-color: var(--secondary);
+  margin-top: 4rem;
+  padding-top: 4rem;
+}
+
+.footerGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3rem;
+  margin-bottom: 3rem;
+}
+
+@media (min-width: 768px) {
+  .footerGrid {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+}
+
+.brand {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+
+.description {
+  color: var(--muted-foreground);
+  max-width: 300px;
+  line-height: 1.6;
+}
+
+.heading {
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.list a {
+  color: var(--muted-foreground);
+}
+
+.list a:hover {
+  color: var(--foreground);
+}
+
+.bottom {
+  border-top: 1px solid var(--border);
+  padding: 2rem 0;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
