@@ -1,64 +1,83 @@
 import Link from 'next/link';
-import styles from './page.module.css';
 
-export default function Home() {
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { createClient } from '@/utils/supabase/server';
+
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: trendingProducts } = await supabase
+    .from('products')
+    .select('*')
+    .limit(4);
+
   return (
-    <div className={styles.main}>
-      <section className={styles.hero}>
-        <div className="container">
-          <div className={styles.heroContent}>
-            <h1 className={`animate-fade-in ${styles.heroTitle}`}>
-              Next-Gen <span className="text-gradient">Hardware</span> for Enthusiasts
-            </h1>
-            <p className={`animate-fade-in ${styles.heroDescription}`} style={{ animationDelay: '0.1s' }}>
-              Elevate your build with premium components, unparalleled performance, and cutting-edge aesthetics.
-            </p>
-            <div className={`animate-fade-in ${styles.heroActions}`} style={{ animationDelay: '0.2s' }}>
-              <Link href="/products" className="btn btn-primary">
-                Shop Now
-              </Link>
-              <Link href="/products?category=new" className="btn btn-secondary">
-                View New Arrivals
-              </Link>
-            </div>
+    <div className="min-h-screen">
+      <section className="relative overflow-hidden py-24 sm:py-32">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,rgba(var(--primary),0.05)_0,transparent_50%)]"></div>
+        <div className="container mx-auto px-6 text-center">
+          <h1 className="mx-auto max-w-4xl text-5xl font-extrabold tracking-tight sm:text-7xl">
+            Next-Gen <span className="bg-gradient-to-br from-primary to-accent bg-clip-text text-transparent">Hardware</span> for Enthusiasts
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground sm:text-xl">
+            Elevate your build with premium components, unparalleled performance, and cutting-edge aesthetics.
+          </p>
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <Link href="/products" className={buttonVariants({ size: "lg" })}>Shop Now</Link>
+            <Link href="/products?category=new" className={buttonVariants({ size: "lg", variant: "secondary" })}>View New Arrivals</Link>
           </div>
         </div>
       </section>
 
-      <section className="container" style={{ margin: '6rem auto' }}>
-        <div className="flex justify-between items-center" style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '2rem', fontWeight: 700 }}>Featured Categories</h2>
+      <section className="container mx-auto my-24 px-6">
+        <div className="mb-8 flex items-center justify-between">
+          <h2 className="text-3xl font-bold tracking-tight">Featured Categories</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {['Processors', 'Graphics Cards', 'Motherboards', 'Memory'].map((category) => (
-            <Link key={category} href={`/products?category=${category.toLowerCase()}`} className={styles.categoryCard}>
-              <h3>{category}</h3>
-              <p>Explore</p>
+            <Link key={category} href={`/products?category=${category.toLowerCase()}`}>
+              <Card className="flex h-48 flex-col items-center justify-center transition-all hover:-translate-y-1 hover:border-primary hover:shadow-md">
+                <CardHeader>
+                  <CardTitle>{category}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">Explore</p>
+                </CardContent>
+              </Card>
             </Link>
           ))}
         </div>
       </section>
       
-      <section className="container" style={{ margin: '6rem auto' }}>
-        <div className="flex justify-between items-center" style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '2rem', fontWeight: 700 }}>Trending Products</h2>
-          <Link href="/products" className="text-gradient" style={{ fontWeight: 600 }}>View All &rarr;</Link>
+      <section className="container mx-auto my-24 px-6">
+        <div className="mb-8 flex items-center justify-between">
+          <h2 className="text-3xl font-bold tracking-tight">Trending Products</h2>
+          <Link href="/products" className={buttonVariants({ variant: "link", className: "font-semibold" })}>View All &rarr;</Link>
         </div>
         
-        {/* Placeholder for Product Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="card" style={{ padding: '1rem' }}>
-              <div style={{ aspectRatio: '1', backgroundColor: 'var(--secondary)', borderRadius: 'var(--radius)', marginBottom: '1rem' }}></div>
-              <div className="flex justify-between items-center" style={{ marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Category {i}</span>
-                <span style={{ fontWeight: 700, color: 'var(--accent)' }}>$299</span>
-              </div>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>High-End Component {i}</h3>
-              <button className="btn btn-primary" style={{ width: '100%', fontSize: '0.875rem', padding: '0.5rem' }}>
-                Add to Cart
-              </button>
-            </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {trendingProducts?.map((product) => (
+            <Link href={`/products/${product.id}`} key={product.id}>
+              <Card className="flex h-full flex-col transition-all hover:-translate-y-1 hover:border-primary hover:shadow-md">
+                <CardHeader className="p-4">
+                  <div className="mb-4 aspect-square rounded-md bg-secondary flex items-center justify-center overflow-hidden relative">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.name} className="object-cover w-full h-full" />
+                    ) : (
+                      <span className="text-muted-foreground">Image</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <CardDescription className="text-xs uppercase tracking-wider">{product.category}</CardDescription>
+                    <span className="font-bold text-primary">${product.price}</span>
+                  </div>
+                  <CardTitle className="mt-2 text-lg line-clamp-1">{product.name}</CardTitle>
+                </CardHeader>
+                <CardFooter className="mt-auto p-4 pt-0">
+                  <Button className="w-full">Add to Cart</Button>
+                </CardFooter>
+              </Card>
+            </Link>
           ))}
         </div>
       </section>

@@ -1,61 +1,91 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { createClient } from '@/utils/supabase/server';
 
-// Mock data
-const MOCK_PRODUCTS = [
-  { id: '1', name: 'RTX 4090 OC Edition', price: 1599, category: 'Graphics Cards', status: 'In Stock', description: 'The ultimate GeForce GPU. It brings an enormous leap in performance, efficiency, and AI-powered graphics.', specs: ['24GB GDDR6X', '384-bit memory interface', 'PCIe 4.0'] },
-  { id: '2', name: 'Ryzen 9 7950X3D', price: 699, category: 'Processors', status: 'In Stock', description: 'The ultimate processor for gaming and creation, featuring AMD 3D V-Cache technology for even more game performance.', specs: ['16 Cores / 32 Threads', 'Up to 5.7 GHz Boost', '144MB Cache'] },
-];
+export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const supabase = await createClient();
+  
+  const { data: product, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('id', id)
+    .single();
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
-  const product = MOCK_PRODUCTS.find(p => p.id === params.id) || MOCK_PRODUCTS[0]; // fallback for demo
+  if (error || !product) {
+    notFound();
+  }
+
+  // Parse specs if it's a string or array
+  let specs: string[] = [];
+  try {
+    if (Array.isArray(product.specs)) {
+      specs = product.specs as string[];
+    } else if (typeof product.specs === 'string') {
+      specs = JSON.parse(product.specs);
+    }
+  } catch (e) {
+    console.error("Failed to parse specs", e);
+  }
 
   return (
-    <div className="container" style={{ padding: '4rem 1.5rem', minHeight: '80vh' }}>
-      <Link href="/products" style={{ display: 'inline-flex', alignItems: 'center', marginBottom: '2rem', color: 'var(--muted-foreground)', fontWeight: 500, fontSize: '0.875rem' }}>
+    <div className="container mx-auto min-h-[80vh] px-6 py-16">
+      <Link href="/products" className="mb-8 inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground">
         &larr; Back to Products
       </Link>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
         {/* Product Image Section */}
-        <div style={{ aspectRatio: '1', backgroundColor: 'var(--secondary)', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)' }}>
-          <span style={{ color: 'var(--muted-foreground)', fontSize: '1.25rem' }}>High-Res Product Image</span>
+        <div className="flex aspect-square items-center justify-center rounded-xl border bg-secondary relative overflow-hidden">
+          {product.image_url ? (
+            <img src={product.image_url} alt={product.name} className="object-cover w-full h-full" />
+          ) : (
+            <span className="text-xl text-muted-foreground">High-Res Product Image</span>
+          )}
         </div>
         
         {/* Product Details Section */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className="flex flex-col gap-6">
           <div>
-            <span style={{ fontSize: '0.875rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+            <Badge variant="outline" className="mb-3">
               {product.category}
-            </span>
-            <h1 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, marginTop: '0.5rem' }}>{product.name}</h1>
+            </Badge>
+            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">{product.name}</h1>
           </div>
           
-          <div style={{ fontSize: '2rem', fontWeight: 700 }}>
+          <div className="text-3xl font-bold text-primary">
             ${product.price}
           </div>
           
-          <p style={{ color: 'var(--muted-foreground)', fontSize: '1.125rem', lineHeight: 1.6 }}>
+          <p className="text-lg leading-relaxed text-muted-foreground">
             {product.description}
           </p>
           
-          <div style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>Key Specifications</h3>
-            <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', color: 'var(--secondary-foreground)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {product.specs.map((spec, i) => (
-                <li key={i}>{spec}</li>
-              ))}
-            </ul>
-          </div>
+          {specs.length > 0 && (
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="mb-4 text-lg font-semibold">Key Specifications</h3>
+                <ul className="flex flex-col gap-2 pl-5 list-disc text-muted-foreground">
+                  {specs.map((spec, i) => (
+                    <li key={i}>{spec}</li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
           
-          <div style={{ display: 'flex', gap: '1rem', marginTop: 'auto', paddingTop: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
-               <button style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', color: 'var(--foreground)', cursor: 'pointer' }}>-</button>
-               <span style={{ padding: '0 1rem', fontWeight: 600 }}>1</span>
-               <button style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', color: 'var(--foreground)', cursor: 'pointer' }}>+</button>
+          <div className="mt-auto flex items-center gap-4 pt-8">
+            <div className="flex h-12 items-center rounded-md border bg-background">
+               <button className="flex h-full w-12 items-center justify-center text-muted-foreground hover:text-foreground">-</button>
+               <span className="flex h-full w-12 items-center justify-center font-semibold border-x">1</span>
+               <button className="flex h-full w-12 items-center justify-center text-muted-foreground hover:text-foreground">+</button>
             </div>
-            <button className="btn btn-primary" style={{ flex: 1, fontSize: '1.125rem' }}>
+            <Button size="lg" className="h-12 flex-1 text-lg">
               Add to Cart
-            </button>
+            </Button>
           </div>
         </div>
       </div>
