@@ -77,16 +77,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </Card>
           )}
           
-          <div className="mt-auto flex items-center gap-4 pt-8">
-            <div className="flex h-12 items-center rounded-md border bg-background">
-               <button className="flex h-full w-12 items-center justify-center text-muted-foreground hover:text-foreground">-</button>
-               <span className="flex h-full w-12 items-center justify-center font-semibold border-x">1</span>
-               <button className="flex h-full w-12 items-center justify-center text-muted-foreground hover:text-foreground">+</button>
-            </div>
-            <Button size="lg" className="h-12 flex-1 text-lg">
-              Add to Cart
-            </Button>
-          </div>
+
         </div>
       </div>
     </div>

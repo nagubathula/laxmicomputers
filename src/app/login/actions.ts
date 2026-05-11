@@ -23,25 +23,6 @@ export async function login(formData: FormData) {
   redirect('/')
 }
 
-export async function signup(formData: FormData) {
-  const supabase = await createClient()
-
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-  })
-
-  if (error) {
-    return { error: error.message }
-  }
-
-  revalidatePath('/', 'layout')
-  // We can redirect to a page that says "Check your email" or log them in immediately if confirm email is disabled
-  redirect('/')
-}
 
 export async function logout() {
   const supabase = await createClient()

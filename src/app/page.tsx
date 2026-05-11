@@ -73,9 +73,7 @@ export default async function Home() {
                   </div>
                   <CardTitle className="mt-2 text-lg line-clamp-1">{product.name}</CardTitle>
                 </CardHeader>
-                <CardFooter className="mt-auto p-4 pt-0">
-                  <Button className="w-full">Add to Cart</Button>
-                </CardFooter>
+
               </Card>
             </Link>
           ))}

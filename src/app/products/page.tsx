@@ -88,13 +88,8 @@ export default function ProductsPage({
                     </Badge>
                   </div>
                   <CardTitle className="text-lg leading-tight line-clamp-2">{product.name}</CardTitle>
-                </CardContent>
-                <CardFooter className="mt-auto border-t p-4 flex items-center justify-between">
                   <span className="text-xl font-bold">${product.price}</span>
-                  <Button onClick={(e) => { e.preventDefault(); /* Add to cart */ }}>
-                    Add
-                  </Button>
-                </CardFooter>
+                </CardContent>
               </Card>
             </Link>
           ))}
