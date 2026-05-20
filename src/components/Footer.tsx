@@ -16,24 +16,21 @@ export default function Footer() {
           <div className="space-y-6">
             <h2 className="font-display font-bold text-2xl tracking-tight">Laksmi Computers</h2>
             <p className="text-sm text-slate-300 leading-relaxed max-w-sm">
-              Expert tech sales and repair services since 2008. Your trusted partner for high-performance computing solutions.
+              © 2024 Laksmi Computers. Expert Tech Sales & Service. Delivering precision computing solutions for professionals and enthusiasts since 1998.
             </p>
             <div className="flex gap-4">
-              <button className="p-2 hover:text-white transition-colors text-slate-400">
-                <Share2 className="h-5 w-5" />
+              <button className="p-2 border border-slate-700 hover:bg-slate-800 rounded-sm transition-colors text-slate-400">
+                <LinkIcon className="h-4 w-4" />
               </button>
-              <button className="p-2 hover:text-white transition-colors text-slate-400">
-                <Mail className="h-5 w-5" />
-              </button>
-              <button className="p-2 hover:text-white transition-colors text-slate-400">
-                <Phone className="h-5 w-5" />
+              <button className="p-2 border border-slate-700 hover:bg-slate-800 rounded-sm transition-colors text-slate-400">
+                <Share2 className="h-4 w-4" />
               </button>
             </div>
           </div>
 
           {/* Navigation Col */}
           <div>
-            <h3 className="font-mono text-sm font-semibold tracking-wider text-slate-400 mb-6 uppercase">QUICK LINKS</h3>
+            <h3 className="font-mono text-sm font-semibold tracking-wider text-slate-400 mb-6 uppercase">NAVIGATION</h3>
             <ul className="space-y-3">
               <li><Link href="#" className="text-sm text-slate-300 hover:text-white transition-colors">Store Hours</Link></li>
               <li><Link href="/contact" className="text-sm text-slate-300 hover:text-white transition-colors">Location</Link></li>
