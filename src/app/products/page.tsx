@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/utils/supabase/client';
@@ -72,7 +72,7 @@ export default function ProductsPage({
                 <CardHeader className="p-4 pb-0">
                   <div className="mb-4 aspect-square rounded-md bg-secondary flex items-center justify-center overflow-hidden relative">
                     {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} className="object-cover w-full h-full" />
+                      <Image src={product.image_url} alt={product.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                     ) : (
                       <span className="text-muted-foreground">Image Placeholder</span>
                     )}

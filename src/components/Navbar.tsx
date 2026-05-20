@@ -1,36 +1,36 @@
-import Link from 'next/link';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { createClient } from '@/utils/supabase/server';
-import { logout } from '@/app/login/actions';
+import Link from "next/link";
+import { Search, ShoppingCart, User } from "lucide-react";
 
-export default async function Navbar() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+export default function Navbar() {
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
-      <div className="container mx-auto flex h-16 items-center justify-between px-6">
-        <Link href="/" className="text-2xl font-extrabold tracking-tight">
-          LaxmiComputers
+    <header className="sticky top-0 z-50 w-full border-b bg-background">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-6 h-6 bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-xs rounded-sm">L</div>
+          <span className="font-display font-bold text-xl tracking-tight text-primary">
+            Laksmi Computers
+          </span>
         </Link>
-        <div className="flex items-center gap-6">
-          <Link href="/products" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-            Hardware
-          </Link>
 
-          {user ? (
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground hidden sm:inline-block">
-                {user.email}
-              </span>
-              <form action={logout}>
-                <Button variant="ghost" type="submit">Logout</Button>
-              </form>
-            </div>
-          )}
+        {/* Navigation */}
+        <nav className="hidden md:flex items-center gap-8">
+          <Link href="/products/laptops" className="text-sm font-medium text-secondary border-b-2 border-secondary pb-1">Laptops</Link>
+          <Link href="/products/graphics-cards" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Components</Link>
+          <Link href="/products/peripherals" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Peripherals</Link>
+          <Link href="/contact" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Service & Repair</Link>
+        </nav>
+
+        {/* Actions */}
+        <div className="flex items-center gap-4">
+          <button className="relative p-2 text-primary hover:bg-muted rounded-sm transition-colors">
+            <ShoppingCart className="h-5 w-5" />
+          </button>
+          <button className="p-2 text-primary hover:bg-muted rounded-sm transition-colors">
+            <User className="h-5 w-5" />
+          </button>
         </div>
       </div>
-    </nav>
+    </header>
   );
 }

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { createClient } from '@/utils/supabase/server';
@@ -41,7 +41,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         {/* Product Image Section */}
         <div className="flex aspect-square items-center justify-center rounded-xl border bg-secondary relative overflow-hidden">
           {product.image_url ? (
-            <img src={product.image_url} alt={product.name} className="object-cover w-full h-full" />
+            <Image src={product.image_url} alt={product.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" />
           ) : (
             <span className="text-xl text-muted-foreground">High-Res Product Image</span>
           )}
