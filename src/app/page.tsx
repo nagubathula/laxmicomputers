@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { PackageSearch, Wrench, Clock, ArrowRight, Cpu } from "lucide-react";
+import { createClient } from "@/utils/supabase/server";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: topProducts } = await supabase
+    .from('products')
+    .select('*')
+    .order('price', { ascending: false })
+    .limit(3);
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
@@ -193,30 +201,34 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                <tr className="border-b border-border zebra-row">
-                  <td className="p-4 font-medium">AMD Ryzen 9 7950X</td>
-                  <td className="p-4 font-mono text-muted-foreground text-xs">16 Cores, 32 Threads, 5.7GHz</td>
-                  <td className="p-4">
-                    <span className="inline-block px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-bold uppercase rounded-sm tracking-wider">In Stock</span>
-                  </td>
-                  <td className="p-4 font-mono font-medium text-right">$599.00</td>
-                </tr>
-                <tr className="border-b border-border zebra-row">
-                  <td className="p-4 font-medium">RTX 4080 Super</td>
-                  <td className="p-4 font-mono text-muted-foreground text-xs">16GB GDDR6X, Ada Lovelace</td>
-                  <td className="p-4">
-                    <span className="inline-block px-2 py-1 bg-orange-50 text-orange-600 border border-orange-200 text-[10px] font-bold uppercase rounded-sm tracking-wider">Low Stock</span>
-                  </td>
-                  <td className="p-4 font-mono font-medium text-right">$999.00</td>
-                </tr>
-                <tr className="zebra-row">
-                  <td className="p-4 font-medium">Crucial T705 2TB</td>
-                  <td className="p-4 font-mono text-muted-foreground text-xs">PCIe 5.0, 14,500MB/s Read</td>
-                  <td className="p-4">
-                    <span className="inline-block px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-bold uppercase rounded-sm tracking-wider">In Stock</span>
-                  </td>
-                  <td className="p-4 font-mono font-medium text-right">$249.00</td>
-                </tr>
+                {topProducts?.map((product) => {
+                  let specString = "";
+                  try {
+                    const parsedSpecs = Array.isArray(product.specs) 
+                      ? product.specs 
+                      : (typeof product.specs === 'string' ? JSON.parse(product.specs) : []);
+                    specString = Array.isArray(parsedSpecs) ? parsedSpecs.join(", ") : "";
+                  } catch (e) {
+                    specString = "";
+                  }
+                  
+                  return (
+                    <tr key={product.id} className="border-b border-border zebra-row">
+                      <td className="p-4 font-medium">{product.name}</td>
+                      <td className="p-4 font-mono text-muted-foreground text-xs">{specString}</td>
+                      <td className="p-4">
+                        <span className={`inline-block px-2 py-1 border text-[10px] font-bold uppercase rounded-sm tracking-wider ${
+                          product.status === 'In Stock' 
+                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                            : 'bg-orange-50 text-orange-600 border-orange-200'
+                        }`}>
+                          {product.status}
+                        </span>
+                      </td>
+                      <td className="p-4 font-mono font-medium text-right">${product.price}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
