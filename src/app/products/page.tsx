@@ -1,44 +1,31 @@
-'use client';
-
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/server';
 import { Database } from '@/types/database.types';
 
 type Product = Database['public']['Tables']['products']['Row'];
 
-export default function ProductsPage({
-  searchParams,
-}: {
-  searchParams?: { category?: string };
-}) {
-  const categoryFilter = searchParams?.category;
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+export default async function ProductsPage(
+  props: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const categoryFilter = searchParams?.category as string | undefined;
+  const supabase = await createClient();
 
-  useEffect(() => {
-    async function fetchProducts() {
-      setLoading(true);
-      let query = supabase.from('products').select('*');
-      
-      if (categoryFilter) {
-        query = query.ilike('category', categoryFilter);
-      }
-      
-      const { data, error } = await query;
-      
-      if (data) setProducts(data);
-      if (error) console.error("Error fetching products:", error);
-      setLoading(false);
-    }
-    
-    fetchProducts();
-  }, [categoryFilter, supabase]);
+  let query = supabase.from('products').select('*');
+  
+  if (categoryFilter) {
+    query = query.ilike('category', categoryFilter);
+  }
+  
+  const { data: products, error } = await query;
+  
+  if (error) console.error("Error fetching products:", error);
 
   return (
     <div className="container mx-auto min-h-[80vh] px-6 py-16">
@@ -60,9 +47,7 @@ export default function ProductsPage({
         </div>
       </div>
       
-      {loading ? (
-        <div className="flex justify-center py-20 text-muted-foreground">Loading products...</div>
-      ) : products.length === 0 ? (
+      {!products || products.length === 0 ? (
         <div className="flex justify-center py-20 text-muted-foreground">No products found in this category.</div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
