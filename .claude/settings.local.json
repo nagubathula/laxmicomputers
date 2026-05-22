@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm ls *)",
+      "Bash(mv \"src/app/api/invoices/[id]/pdf/route.ts\" \"src/app/api/invoices/[id]/pdf/route.tsx\")",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

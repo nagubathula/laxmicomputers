@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { PackageSearch, Wrench, Clock, ArrowRight, Cpu } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import { formatMoney, type Currency } from "@/lib/money";
+import { deriveStockStatus } from "@/lib/stock";
 
 export default async function Home() {
   const supabase = await createClient();
-  const { data: topProducts } = await supabase
-    .from('products')
-    .select('*')
-    .order('price', { ascending: false })
-    .limit(3);
+  const [{ data: topProducts }, { data: settings }] = await Promise.all([
+    supabase.from('products').select('*').order('price', { ascending: false }).limit(3),
+    supabase.from('business_settings').select('default_currency').eq('id', 1).single(),
+  ]);
+  const currency: Currency = (settings?.default_currency ?? 'INR') as Currency;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -212,20 +214,24 @@ export default async function Home() {
                     specString = "";
                   }
                   
+                  const status = deriveStockStatus(
+                    (product as any).stock_qty ?? 0,
+                    (product as any).reorder_level ?? 0,
+                  );
+                  const statusClass =
+                    status === 'In Stock' ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                    : status === 'Low Stock' ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : 'bg-red-50 text-red-600 border-red-200';
                   return (
                     <tr key={product.id} className="border-b border-border zebra-row">
                       <td className="p-4 font-medium">{product.name}</td>
                       <td className="p-4 font-mono text-muted-foreground text-xs">{specString}</td>
                       <td className="p-4">
-                        <span className={`inline-block px-2 py-1 border text-[10px] font-bold uppercase rounded-sm tracking-wider ${
-                          product.status === 'In Stock' 
-                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                            : 'bg-orange-50 text-orange-600 border-orange-200'
-                        }`}>
-                          {product.status}
+                        <span className={`inline-block px-2 py-1 border text-[10px] font-bold uppercase rounded-sm tracking-wider ${statusClass}`}>
+                          {status}
                         </span>
                       </td>
-                      <td className="p-4 font-mono font-medium text-right">${product.price}</td>
+                      <td className="p-4 font-mono font-medium text-right">{formatMoney(product.price, currency)}</td>
                     </tr>
                   );
                 })}

@@ -5,6 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/utils/supabase/server';
 import { Database } from '@/types/database.types';
+import { formatMoney, type Currency } from '@/lib/money';
+import { deriveStockStatus } from '@/lib/stock';
 
 type Product = Database['public']['Tables']['products']['Row'];
 
@@ -18,14 +20,19 @@ export default async function ProductsPage(
   const supabase = await createClient();
 
   let query = supabase.from('products').select('*');
-  
+
   if (categoryFilter) {
     query = query.ilike('category', categoryFilter);
   }
-  
-  const { data: products, error } = await query;
-  
+
+  const [{ data: products, error }, { data: settings }] = await Promise.all([
+    query,
+    supabase.from('business_settings').select('default_currency').eq('id', 1).single(),
+  ]);
+
   if (error) console.error("Error fetching products:", error);
+
+  const currency: Currency = (settings?.default_currency ?? 'INR') as Currency;
 
   return (
     <div className="container mx-auto min-h-[80vh] px-6 py-16">
@@ -51,33 +58,41 @@ export default async function ProductsPage(
         <div className="flex justify-center py-20 text-muted-foreground">No products found in this category.</div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {products.map((product) => (
-            <Link href={`/products/${product.id}`} key={product.id}>
-              <Card className="flex h-full flex-col transition-all hover:-translate-y-1 hover:border-primary hover:shadow-md">
-                <CardHeader className="p-4 pb-0">
-                  <div className="mb-4 aspect-square rounded-md bg-secondary flex items-center justify-center overflow-hidden relative">
-                    {product.image_url ? (
-                      <Image src={product.image_url} alt={product.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
-                    ) : (
-                      <span className="text-muted-foreground">Image Placeholder</span>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="flex flex-1 flex-col p-4 pt-0">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {product.category}
-                    </span>
-                    <Badge variant={product.status === 'In Stock' ? 'default' : 'secondary'} className={product.status === 'In Stock' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}>
-                      {product.status}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-lg leading-tight line-clamp-2">{product.name}</CardTitle>
-                  <span className="text-xl font-bold">${product.price}</span>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {products.map((product) => {
+            const status = deriveStockStatus(
+              (product as any).stock_qty ?? 0,
+              (product as any).reorder_level ?? 0,
+            );
+            const badgeClass =
+              status === 'In Stock' ? 'bg-emerald-500 hover:bg-emerald-600' :
+              status === 'Low Stock' ? 'bg-amber-500 hover:bg-amber-600' :
+              'bg-red-500 hover:bg-red-600';
+            return (
+              <Link href={`/products/${product.id}`} key={product.id}>
+                <Card className="flex h-full flex-col transition-all hover:-translate-y-1 hover:border-primary hover:shadow-md">
+                  <CardHeader className="p-4 pb-0">
+                    <div className="mb-4 aspect-square rounded-md bg-secondary flex items-center justify-center overflow-hidden relative">
+                      {product.image_url ? (
+                        <Image src={product.image_url} alt={product.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+                      ) : (
+                        <span className="text-muted-foreground">Image Placeholder</span>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col p-4 pt-0">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {product.category}
+                      </span>
+                      <Badge className={badgeClass}>{status}</Badge>
+                    </div>
+                    <CardTitle className="text-lg leading-tight line-clamp-2">{product.name}</CardTitle>
+                    <span className="text-xl font-bold">{formatMoney(product.price, currency)}</span>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

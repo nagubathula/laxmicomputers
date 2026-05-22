@@ -73,3 +73,30 @@
     @apply bg-slate-50;
   }
 }
+
+/* ---- Print styles ---- */
+@media print {
+  /* Hide site chrome (admin header + back nav) */
+  body > div > header,
+  .print\:hidden {
+    display: none !important;
+  }
+  /* Strip background colors that the printer would render as grey */
+  body, main, .container {
+    background: white !important;
+  }
+  /* When a page has #zreport-print, show only that section */
+  body:has(#zreport-print) main > * {
+    visibility: hidden;
+  }
+  body:has(#zreport-print) #zreport-print,
+  body:has(#zreport-print) #zreport-print * {
+    visibility: visible;
+  }
+  body:has(#zreport-print) #zreport-print {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 1rem;
+  }
+}

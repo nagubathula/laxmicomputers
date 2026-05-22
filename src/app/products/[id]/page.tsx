@@ -4,16 +4,18 @@ import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { createClient } from '@/utils/supabase/server';
+import { formatMoney, type Currency } from '@/lib/money';
+import { deriveStockStatus } from '@/lib/stock';
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  
-  const { data: product, error } = await supabase
-    .from('products')
-    .select('*')
-    .eq('id', id)
-    .single();
+
+  const [{ data: product, error }, { data: settings }] = await Promise.all([
+    supabase.from('products').select('*').eq('id', id).single(),
+    supabase.from('business_settings').select('default_currency').eq('id', 1).single(),
+  ]);
+  const currency: Currency = (settings?.default_currency ?? 'INR') as Currency;
 
   if (error || !product) {
     notFound();
@@ -56,8 +58,21 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">{product.name}</h1>
           </div>
           
-          <div className="text-3xl font-bold text-primary">
-            ${product.price}
+          <div className="flex items-baseline gap-3">
+            <div className="text-3xl font-bold text-primary">
+              {formatMoney(product.price, currency)}
+            </div>
+            <Badge
+              className={
+                deriveStockStatus((product as any).stock_qty ?? 0, (product as any).reorder_level ?? 0) === 'In Stock'
+                  ? 'bg-emerald-500'
+                  : deriveStockStatus((product as any).stock_qty ?? 0, (product as any).reorder_level ?? 0) === 'Low Stock'
+                  ? 'bg-amber-500'
+                  : 'bg-red-500'
+              }
+            >
+              {deriveStockStatus((product as any).stock_qty ?? 0, (product as any).reorder_level ?? 0)}
+            </Badge>
           </div>
           
           <p className="text-lg leading-relaxed text-muted-foreground">

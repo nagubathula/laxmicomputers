@@ -1,16 +1,30 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ScanBarcode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import BarcodeScanner from '@/components/BarcodeScanner';
+import { useBarcodeWedge } from '@/hooks/useBarcodeWedge';
 import { updateProduct } from '@/app/admin/actions';
+import { deriveStockStatus } from '@/lib/stock';
+
+const selectClass =
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 export default function EditProductForm({ product }: { product: any }) {
   const [state, formAction, pending] = useActionState(updateProduct, null);
+  const [barcode, setBarcode] = useState<string>(product.barcode ?? '');
+  const [scannerOpen, setScannerOpen] = useState(false);
+
+  useBarcodeWedge({ onScan: setBarcode, disabled: scannerOpen });
+
+  const stockQty = product.stock_qty ?? 0;
+  const reorderLevel = product.reorder_level ?? 0;
+  const status = deriveStockStatus(stockQty, reorderLevel);
 
   return (
     <div className="container mx-auto p-6 lg:p-10 max-w-3xl">
@@ -23,82 +37,112 @@ export default function EditProductForm({ product }: { product: any }) {
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-navy-900">Edit Product</h1>
-        <p className="text-slate-500 mt-1">Update details for {product.name}</p>
+        <p className="text-slate-500 mt-1">
+          {product.name} · Current stock: <strong>{stockQty}</strong> · {status}
+        </p>
       </div>
 
       <div className="rounded-md border bg-white p-6 shadow-sm">
         <form action={formAction} className="space-y-6">
           <input type="hidden" name="id" value={product.id} />
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="name">Product Name *</Label>
-              <Input id="name" name="name" defaultValue={product.name} placeholder="e.g. RTX 4090" required />
+              <Input id="name" name="name" defaultValue={product.name} required />
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="price">Price (USD) *</Label>
-              <Input id="price" name="price" type="number" step="0.01" min="0" defaultValue={product.price} placeholder="0.00" required />
-            </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="category">Category *</Label>
-              <select 
-                id="category" 
-                name="category" 
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                required
-                defaultValue={product.category}
-              >
+              <select id="category" name="category" className={selectClass} required defaultValue={product.category}>
                 <option value="laptops">Laptops</option>
                 <option value="graphics-cards">Graphics Cards</option>
                 <option value="peripherals">Peripherals</option>
                 <option value="components">Other Components</option>
               </select>
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="status">Status *</Label>
-              <select 
-                id="status" 
-                name="status" 
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                required
-                defaultValue={product.status}
-              >
-                <option value="In Stock">In Stock</option>
-                <option value="Out of Stock">Out of Stock</option>
-                <option value="Pre-order">Pre-order</option>
+              <Label htmlFor="price">Selling Price (₹) *</Label>
+              <Input id="price" name="price" type="number" step="0.01" min="0" defaultValue={product.price} required />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cost_price">Cost Price (₹)</Label>
+              <Input id="cost_price" name="cost_price" type="number" step="0.01" min="0" defaultValue={product.cost_price ?? ''} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="hsn_code">HSN Code</Label>
+              <Input id="hsn_code" name="hsn_code" defaultValue={product.hsn_code ?? ''} placeholder="e.g. 8471" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="gst_rate">GST Rate (%)</Label>
+              <select id="gst_rate" name="gst_rate" className={selectClass} defaultValue={String(product.gst_rate ?? 18)}>
+                <option value="0">0% (exempt)</option>
+                <option value="5">5%</option>
+                <option value="12">12%</option>
+                <option value="18">18%</option>
+                <option value="28">28%</option>
               </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reorder_level">Reorder Level</Label>
+              <Input id="reorder_level" name="reorder_level" type="number" min="0" defaultValue={reorderLevel} />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="tracks_serials" name="tracks_serials" className="h-4 w-4" defaultChecked={!!product.tracks_serials} />
+                <Label htmlFor="tracks_serials" className="cursor-pointer">Track serial numbers</Label>
+              </div>
+              <p className="text-xs text-slate-500">Each unit has its own serial (laptops, GPUs, monitors). Enables warranty lookup.</p>
+            </div>
+          </div>
+
+          <div className="rounded-md border border-amber-200 bg-amber-50/50 p-4 space-y-3">
+            <div className="text-sm font-medium text-amber-900">Stock adjustment</div>
+            <p className="text-xs text-amber-800">
+              To change stock, enter a delta (positive to add, negative to remove). A stock-movement
+              ledger entry is recorded. Leave at 0 to keep stock unchanged.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="stock_adjustment" className="text-xs">Quantity delta</Label>
+                <Input id="stock_adjustment" name="stock_adjustment" type="number" defaultValue={0} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="adjustment_note" className="text-xs">Reason / note</Label>
+                <Input id="adjustment_note" name="adjustment_note" placeholder="e.g. Cycle count correction" />
+              </div>
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="image_url">Image URL</Label>
-            <Input id="image_url" name="image_url" type="url" defaultValue={product.image_url || ''} placeholder="https://example.com/image.jpg" />
+            <Input id="image_url" name="image_url" type="url" defaultValue={product.image_url || ''} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="barcode">Barcode</Label>
+            <div className="flex gap-2">
+              <Input id="barcode" name="barcode" value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="Scan or enter manually" />
+              <Button type="button" variant="outline" onClick={() => setScannerOpen(true)}>
+                <ScanBarcode className="h-4 w-4 mr-1" /> Scan
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">Description *</Label>
-            <Textarea 
-              id="description" 
-              name="description" 
-              rows={4} 
-              defaultValue={product.description}
-              placeholder="Detailed product description..."
-              required 
-            />
+            <Textarea id="description" name="description" rows={4} defaultValue={product.description} required />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="specs">Specifications</Label>
-            <Textarea 
-              id="specs" 
-              name="specs" 
-              rows={3} 
-              defaultValue={product.specsString}
-              placeholder="e.g. 24GB GDDR6X, 384-bit memory interface, HDMI 2.1 (comma separated)" 
-            />
+            <Textarea id="specs" name="specs" rows={3} defaultValue={product.specsString} placeholder="e.g. 24GB GDDR6X, 384-bit memory interface, HDMI 2.1 (comma separated)" />
             <p className="text-xs text-slate-500">Enter specifications separated by commas.</p>
           </div>
 
@@ -118,6 +162,12 @@ export default function EditProductForm({ product }: { product: any }) {
           </div>
         </form>
       </div>
+
+      <BarcodeScanner
+        open={scannerOpen}
+        onDetected={(code) => { setBarcode(code); setScannerOpen(false); }}
+        onClose={() => setScannerOpen(false)}
+      />
     </div>
   );
 }
