@@ -176,9 +176,116 @@ export default function POSClient({ currency, businessStateCode }: Props) {
       window.open(`/api/invoices/${res.invoiceId}/pdf`, '_blank');
       showToast('success', `Invoice ${res.invoiceNumber} created.`);
       setCart([]); setCustomer(null); setAmountPaid(''); setNotes('');
+      setSelectedLineIndex(-1);
       router.refresh();
+      // Re-focus the barcode input for the next sale
+      setTimeout(() => barcodeInputRef.current?.focus(), 50);
     });
   };
+
+  // Selection-aware line mutations driven by keyboard
+  const bumpQty = (delta: number) => {
+    if (selectedLineIndex < 0 || selectedLineIndex >= cart.length) return;
+    const line = cart[selectedLineIndex];
+    const nextQty = line.qty + delta;
+    if (nextQty < 1) { removeLine(line.productId); setSelectedLineIndex(-1); return; }
+    if (nextQty > line.stockAvailable) { showToast('error', `Only ${line.stockAvailable} in stock.`); return; }
+    updateLine(line.productId, { qty: nextQty });
+  };
+
+  // ===== Keyboard shortcuts =====
+  // The barcode wedge already swallows scanner bursts; single keypresses fall
+  // through to this hook. F-keys + modifier combos work even inside inputs.
+  useKeyboardShortcuts(
+    {
+      'f1': () => barcodeInputRef.current?.focus(),
+      'f2': () => { setCustomer(null); setTimeout(() => customerInputRef.current?.focus(), 0); },
+      'f12': () => onCheckout(),
+      'mod+enter': () => onCheckout(),
+      'escape': () => {
+        // Close shortcuts overlay first, else clear selection, else blur
+        if (shortcutsOpen) { setShortcutsOpen(false); return; }
+        if (selectedLineIndex >= 0) { setSelectedLineIndex(-1); return; }
+        (document.activeElement as HTMLElement | null)?.blur?.();
+      },
+      'arrowdown': () => setSelectedLineIndex(i => Math.min(cart.length - 1, i + 1)),
+      'arrowup': () => setSelectedLineIndex(i => Math.max(0, (i < 0 ? cart.length : i) - 1)),
+      '+': () => bumpQty(1),
+      '=': () => bumpQty(1),         // shift not required on most keyboards
+      '-': () => bumpQty(-1),
+      'delete': () => {
+        if (selectedLineIndex < 0) return;
+        const line = cart[selectedLineIndex];
+        removeLine(line.productId);
+        setSelectedLineIndex(-1);
+      },
+      'backspace': () => {
+        // Only when no input has focus (handled by hook) — duplicates Delete
+        if (selectedLineIndex < 0) return;
+        const line = cart[selectedLineIndex];
+        removeLine(line.productId);
+        setSelectedLineIndex(-1);
+      },
+      '1': () => setPaymentMethod('cash'),
+      '2': () => setPaymentMethod('upi'),
+      '3': () => setPaymentMethod('card'),
+      '4': () => setPaymentMethod('bank_transfer'),
+      '5': () => setPaymentMethod('credit'),
+      '?': () => setShortcutsOpen(true),
+      'shift+?': () => setShortcutsOpen(true),
+    },
+    { disabled: scannerOpen },
+  );
+
+  // Auto-select the most recently added line so + / - have something to act on
+  useEffect(() => {
+    if (cart.length > 0 && selectedLineIndex < 0) {
+      setSelectedLineIndex(cart.length - 1);
+    } else if (cart.length === 0 && selectedLineIndex !== -1) {
+      setSelectedLineIndex(-1);
+    } else if (selectedLineIndex >= cart.length) {
+      setSelectedLineIndex(cart.length - 1);
+    }
+  }, [cart.length, selectedLineIndex]);
+
+  const shortcutGroups: ShortcutGroup[] = [
+    {
+      title: 'Focus',
+      items: [
+        { keys: ['F1'], description: 'Focus barcode / search' },
+        { keys: ['F2'], description: 'Pick customer' },
+        { keys: ['Esc'], description: 'Clear selection / close' },
+      ],
+    },
+    {
+      title: 'Cart',
+      items: [
+        { keys: ['↑'], description: 'Select previous line' },
+        { keys: ['↓'], description: 'Select next line' },
+        { keys: ['+'], description: 'Increase qty on selected line' },
+        { keys: ['−'], description: 'Decrease qty (removes at 0)' },
+        { keys: ['Del'], description: 'Remove selected line' },
+      ],
+    },
+    {
+      title: 'Payment',
+      items: [
+        { keys: ['1'], description: 'Cash' },
+        { keys: ['2'], description: 'UPI' },
+        { keys: ['3'], description: 'Card' },
+        { keys: ['4'], description: 'Bank transfer' },
+        { keys: ['5'], description: 'On credit' },
+      ],
+    },
+    {
+      title: 'Checkout',
+      items: [
+        { keys: ['F12'], description: 'Charge & print' },
+        { keys: ['Ctrl', '↵'], description: 'Charge & print (alt)' },
+        { keys: ['?'], description: 'Show this list' },
+      ],
+    },
+  ];
 
   return (
     <div className="container mx-auto p-4 lg:p-8 max-w-7xl">
@@ -202,9 +309,10 @@ export default function POSClient({ currency, businessStateCode }: Props) {
                 onSubmit={(e) => { e.preventDefault(); handleScannedBarcode(manualBarcode); setManualBarcode(''); }}
               >
                 <Input
+                  ref={barcodeInputRef}
                   value={manualBarcode}
                   onChange={(e) => setManualBarcode(e.target.value)}
-                  placeholder="Scan barcode or type and press Enter…"
+                  placeholder="Scan barcode or type and press Enter…  [F1]"
                   className="flex-1"
                   autoFocus
                 />
@@ -213,9 +321,12 @@ export default function POSClient({ currency, businessStateCode }: Props) {
               <Button type="button" variant="outline" onClick={() => setScannerOpen(true)}>
                 <ScanBarcode className="h-4 w-4 mr-1" /> Camera
               </Button>
+              <Button type="button" variant="outline" onClick={() => setShortcutsOpen(true)} title="Show keyboard shortcuts (?)">
+                <Keyboard className="h-4 w-4" />
+              </Button>
             </div>
             <p className="mt-2 text-xs text-slate-500">
-              Hardware scanner works hands-free — just scan; the cart updates automatically.
+              Hardware scanner is hands-free. Keyboard: <kbd className="px-1 py-0.5 rounded border bg-slate-50 font-mono text-[10px]">F1</kbd> barcode · <kbd className="px-1 py-0.5 rounded border bg-slate-50 font-mono text-[10px]">↑↓</kbd> select · <kbd className="px-1 py-0.5 rounded border bg-slate-50 font-mono text-[10px]">+/−</kbd> qty · <kbd className="px-1 py-0.5 rounded border bg-slate-50 font-mono text-[10px]">F12</kbd> charge · <kbd className="px-1 py-0.5 rounded border bg-slate-50 font-mono text-[10px]">?</kbd> help
             </p>
           </div>
 
@@ -236,14 +347,18 @@ export default function POSClient({ currency, businessStateCode }: Props) {
                 <tbody className="divide-y">
                   {cart.length === 0 ? (
                     <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-400">Scan a barcode to add the first item.</td></tr>
-                  ) : cart.map(line => {
+                  ) : cart.map((line, idx) => {
                     const lineTotal = computeLineGst({
                       qty: line.qty, unitPrice: line.unitPrice, discount: line.discount,
                       gstRate: line.gstRate, interState,
                     }).total;
+                    const isSelected = idx === selectedLineIndex;
                     return (
                       <Fragment key={line.productId}>
-                      <tr className="hover:bg-slate-50">
+                      <tr
+                        className={`hover:bg-slate-50 cursor-pointer ${isSelected ? 'bg-blue-50 ring-1 ring-blue-200' : ''}`}
+                        onClick={() => setSelectedLineIndex(idx)}
+                      >
                         <td className="px-4 py-3">
                           <div className="font-medium text-navy-900 line-clamp-1">{line.name}</div>
                           {line.hsn && <div className="text-xs text-slate-400">HSN {line.hsn}</div>}
@@ -353,9 +468,10 @@ export default function POSClient({ currency, businessStateCode }: Props) {
             ) : (
               <div className="relative">
                 <Input
+                  ref={customerInputRef}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by name, phone or GSTIN…"
+                  placeholder="Search by name, phone or GSTIN…  [F2]"
                 />
                 {searchResults.length > 0 && (
                   <div className="absolute left-0 right-0 top-full mt-1 z-10 rounded-md border bg-white shadow-lg max-h-64 overflow-auto">
@@ -398,19 +514,19 @@ export default function POSClient({ currency, businessStateCode }: Props) {
 
           <div className="rounded-md border bg-white p-4 shadow-sm space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="payment_method">Payment</Label>
+              <Label htmlFor="payment_method">Payment <span className="text-xs text-slate-400 font-normal ml-1">[1-5]</span></Label>
               <select id="payment_method" className={selectClass} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as any)}>
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="card">Card</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="credit">On Credit</option>
+                <option value="cash">1 — Cash</option>
+                <option value="upi">2 — UPI</option>
+                <option value="card">3 — Card</option>
+                <option value="bank_transfer">4 — Bank Transfer</option>
+                <option value="credit">5 — On Credit</option>
                 <option value="mixed">Mixed</option>
               </select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="amount_paid">Amount Paid</Label>
-              <Input id="amount_paid" type="number" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder={String(breakdown.grand)} />
+              <Input ref={amountPaidRef} id="amount_paid" type="number" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder={String(breakdown.grand)} />
               <p className="text-xs text-slate-500">Leave blank to mark fully paid.</p>
             </div>
             <div className="space-y-1.5">
@@ -419,7 +535,8 @@ export default function POSClient({ currency, businessStateCode }: Props) {
             </div>
 
             <Button type="button" onClick={onCheckout} disabled={pending || cart.length === 0} className="w-full bg-emerald-600 hover:bg-emerald-700 h-11 text-base">
-              {pending ? 'Processing…' : `Charge ${formatMoney(breakdown.grand, currency)}`}
+              <span>{pending ? 'Processing…' : `Charge ${formatMoney(breakdown.grand, currency)}`}</span>
+              <kbd className="ml-2 px-1.5 py-0.5 rounded border border-white/30 bg-white/10 font-mono text-[10px] font-normal">F12</kbd>
             </Button>
           </div>
         </div>
@@ -440,6 +557,8 @@ export default function POSClient({ currency, businessStateCode }: Props) {
         onDetected={(code) => { setScannerOpen(false); handleScannedBarcode(code); }}
         onClose={() => setScannerOpen(false)}
       />
+
+      <ShortcutsOverlay open={shortcutsOpen} groups={shortcutGroups} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }
