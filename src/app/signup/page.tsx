@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { login } from './actions';
+import { signup } from '@/app/login/actions';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,7 +16,7 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     
-    const response = await login(formData);
+    const response = await signup(formData);
     
     if (response?.error) {
       setError(response.error);
@@ -28,8 +28,8 @@ export default function LoginPage() {
     <div className="container mx-auto flex min-h-[80vh] items-center justify-center px-6 py-16">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-extrabold">Admin Login</CardTitle>
-          <CardDescription>Sign in to manage the catalog</CardDescription>
+          <CardTitle className="text-3xl font-extrabold">Admin Sign Up</CardTitle>
+          <CardDescription>Create an admin account to manage the catalog</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={handleSubmit} className="flex flex-col gap-6">
@@ -49,14 +49,14 @@ export default function LoginPage() {
             )}
             
             <Button type="submit" className="w-full mt-2" disabled={loading}>
-              {loading ? 'Authenticating...' : 'Sign In'}
+              {loading ? 'Creating account...' : 'Sign Up'}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex justify-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="ml-1 font-medium text-primary hover:underline">
-            Sign up
+          Already have an account?{' '}
+          <Link href="/login" className="ml-1 font-medium text-primary hover:underline">
+            Log in
           </Link>
         </CardFooter>
       </Card>

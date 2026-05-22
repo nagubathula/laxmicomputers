@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, ShoppingCart, User } from "lucide-react";
+import { Search, User } from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -44,12 +44,7 @@ export default function Navbar() {
               />
             </div>
           )}
-          <button className="relative p-2 text-primary hover:bg-muted rounded-sm transition-colors">
-            <ShoppingCart className="h-5 w-5" />
-            {isProductPage && (
-              <span className="absolute top-1 right-1 h-3 w-3 rounded-full bg-secondary text-[9px] text-white flex items-center justify-center font-bold">3</span>
-            )}
-          </button>
+
           <button className="p-2 text-primary hover:bg-muted rounded-sm transition-colors">
             <User className="h-5 w-5" />
           </button>
