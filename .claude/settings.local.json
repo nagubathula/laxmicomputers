@@ -4,7 +4,14 @@
       "Bash(npm install *)",
       "Bash(npm ls *)",
       "Bash(mv \"src/app/api/invoices/[id]/pdf/route.ts\" \"src/app/api/invoices/[id]/pdf/route.tsx\")",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(python3 -c \"import sys,json; lines=sys.stdin.read\\(\\).strip\\(\\).split\\('\\\\n'\\); [print\\(json.loads\\(l\\).get\\('message',{}\\).get\\('content',''\\)[:500] if isinstance\\(json.loads\\(l\\).get\\('message',{}\\).get\\('content',''\\),str\\) else ''\\) for l in lines[-5:]]\")",
+      "Bash(Move-Item -Path \"src\\\\app\\\\page.tsx\" -Destination \"src\\\\app\\\\\\(storefront\\)\\\\page.tsx\")",
+      "Bash(Move-Item -Path \"src\\\\app\\\\contact\" -Destination \"src\\\\app\\\\\\(storefront\\)\\\\contact\")",
+      "Bash(Move-Item -Path \"src\\\\app\\\\login\" -Destination \"src\\\\app\\\\\\(storefront\\)\\\\login\")",
+      "Bash(Move-Item -Path \"src\\\\app\\\\signup\" -Destination \"src\\\\app\\\\\\(storefront\\)\\\\signup\")",
+      "Bash(Move-Item -Path \"src\\\\app\\\\products\" -Destination \"src\\\\app\\\\\\(storefront\\)\\\\products\")",
+      "Bash(ls \"C:\\\\Users\\\\satya\\\\Documents\\\\GitHub\\\\laxmicomputers\\\\src\\\\app\" 2>/dev/null || ls /mnt/c/Users/satya/Documents/GitHub/laxmicomputers/src/app 2>/dev/null)"
     ]
   }
 }

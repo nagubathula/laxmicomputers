@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({
@@ -32,10 +30,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cn(geist.variable, inter.variable, jetbrainsMono.variable)} suppressHydrationWarning>
-      <body className="font-sans bg-background text-foreground antialiased flex flex-col min-h-screen" suppressHydrationWarning>
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <Footer />
+      <body className="font-sans bg-background text-foreground antialiased" suppressHydrationWarning>
+        {children}
       </body>
     </html>
   );

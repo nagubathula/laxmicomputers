@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { signup } from '@/app/login/actions';
+import { signup } from '@/app/(storefront)/login/actions';
 
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
