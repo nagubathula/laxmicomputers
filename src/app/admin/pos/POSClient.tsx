@@ -27,6 +27,7 @@ type CartLine = {
   tracksSerials: boolean;
   availableSerials: { id: string; serial_number: string }[];
   selectedSerialIds: string[];
+  manualItem?: boolean; // added inline — skip stock checks
 };
 
 type Customer = {
@@ -73,6 +74,11 @@ export default function POSClient({ currency, businessStateCode }: Props) {
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [showNewCustomer, setShowNewCustomer] = useState(false);
   const [savingCustomer, setSavingCustomer] = useState(false);
+  // Inline quick item (barcode not found → pre-filled prompt)
+  const [quickItemDraft, setQuickItemDraft] = useState<{ name: string } | null>(null);
+  const [qiPrice, setQiPrice] = useState('');
+  const [qiGst, setQiGst] = useState('18');
+  const [savingQuickItem, setSavingQuickItem] = useState(false);
   // Quick product panel
   const [productPanelOpen, setProductPanelOpen] = useState(false);
   const [qpName, setQpName] = useState('');
@@ -88,7 +94,12 @@ export default function POSClient({ currency, businessStateCode }: Props) {
   const handleScannedBarcode = async (code: string) => {
     if (!code) return;
     const result = await findProductByBarcode(code);
-    if (!result.ok) { toast.error(result.error); return; }
+    if (!result.ok) {
+      // Offer to add as a quick inline item rather than just showing an error
+      setQuickItemDraft({ name: code });
+      setQiPrice(''); setQiGst('18');
+      return;
+    }
     const p = result.product;
     if (p.stock_qty <= 0 && !cart.find((l) => l.productId === p.id)) {
       toast.error(`"${p.name}" is out of stock`);
@@ -150,6 +161,29 @@ export default function POSClient({ currency, businessStateCode }: Props) {
     setCart((prev) => prev.map((l) => l.productId === productId ? { ...l, ...patch } : l));
   const removeLine = (productId: string) => setCart((prev) => prev.filter((l) => l.productId !== productId));
 
+  const handleQuickItem = async () => {
+    if (!quickItemDraft || !qiPrice) return;
+    setSavingQuickItem(true);
+    const res = await quickAddProduct({
+      name: quickItemDraft.name.trim(),
+      price: parseFloat(qiPrice),
+      category: 'General',
+      stock_qty: 0,
+      gst_rate: parseFloat(qiGst) || 0,
+    });
+    setSavingQuickItem(false);
+    if (!res.ok) { toast.error(res.error); return; }
+    const p = res.product;
+    setCart((prev) => [...prev, {
+      productId: p.id, name: p.name, qty: 1, unitPrice: Number(p.price),
+      discount: 0, gstRate: Number(p.gst_rate ?? 0), hsn: null,
+      stockAvailable: 0, tracksSerials: false,
+      availableSerials: [], selectedSerialIds: [],
+      manualItem: true,
+    }]);
+    setQuickItemDraft(null); setQiPrice(''); setQiGst('18');
+  };
+
   const handleCreateCustomer = async () => {
     if (!newCustomerName.trim()) return;
     setSavingCustomer(true);
@@ -209,6 +243,7 @@ export default function POSClient({ currency, businessStateCode }: Props) {
         productId: l.productId, qty: l.qty, unitPrice: l.unitPrice,
         discount: round2(l.discount + additionalDiscount),
         serialIds: l.tracksSerials ? l.selectedSerialIds : undefined,
+        skipStockCheck: l.manualItem,
       };
     });
 
@@ -236,7 +271,7 @@ export default function POSClient({ currency, businessStateCode }: Props) {
     const line = cart[selectedLineIndex];
     const next = line.qty + delta;
     if (next < 1) { removeLine(line.productId); setSelectedLineIndex(-1); return; }
-    if (next > line.stockAvailable) { toast.error(`Only ${line.stockAvailable} in stock`); return; }
+    if (!line.manualItem && next > line.stockAvailable) { toast.error(`Only ${line.stockAvailable} in stock`); return; }
     updateLine(line.productId, { qty: next });
   };
 
@@ -324,7 +359,7 @@ export default function POSClient({ currency, businessStateCode }: Props) {
         {/* LEFT: scan + cart */}
         <div className="space-y-4 min-w-0">
           {/* Scan bar */}
-          <div className="admin-card p-4">
+          <div className="admin-card p-4 space-y-3">
             <div className="flex flex-col sm:flex-row gap-2">
               <form
                 className="flex flex-1 gap-2"
@@ -351,11 +386,68 @@ export default function POSClient({ currency, businessStateCode }: Props) {
                 type="button"
                 variant="outline"
                 className="h-11 px-3 text-violet-700 border-violet-200 hover:bg-violet-50"
+                onClick={() => { setQuickItemDraft({ name: '' }); setQiPrice(''); setQiGst('18'); }}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Quick item
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 px-3"
                 onClick={() => setProductPanelOpen(true)}
               >
                 <PackagePlus className="h-4 w-4 mr-1.5" /> New product
               </Button>
             </div>
+
+            {/* Inline quick-item form — appears when barcode not found or Quick item clicked */}
+            {quickItemDraft !== null && (
+              <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-xs font-semibold text-violet-800">Quick item</span>
+                  <button type="button" onClick={() => setQuickItemDraft(null)} className="text-stone-400 hover:text-stone-700">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <form
+                  className="flex flex-wrap gap-2"
+                  onSubmit={(e) => { e.preventDefault(); handleQuickItem(); }}
+                >
+                  <input
+                    autoFocus
+                    value={quickItemDraft.name}
+                    onChange={(e) => setQuickItemDraft({ name: e.target.value })}
+                    placeholder="Item name *"
+                    className="h-9 flex-[2] min-w-[140px] rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                  />
+                  <div className="relative flex-1 min-w-[90px]">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm select-none">₹</span>
+                    <input
+                      type="number" min={0} step="0.01"
+                      value={qiPrice}
+                      onChange={(e) => setQiPrice(e.target.value)}
+                      placeholder="Price *"
+                      className="h-9 w-full rounded-lg border border-stone-300 bg-white pl-6 pr-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                    />
+                  </div>
+                  <select
+                    value={qiGst}
+                    onChange={(e) => setQiGst(e.target.value)}
+                    className="h-9 rounded-lg border border-stone-300 bg-white px-2 text-sm focus:border-violet-500 focus:outline-none"
+                  >
+                    {[0, 5, 12, 18, 28].map((r) => <option key={r} value={r}>{r}% GST</option>)}
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={savingQuickItem || !quickItemDraft.name.trim() || !qiPrice}
+                    className="h-9 px-4 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm font-medium transition-colors"
+                  >
+                    {savingQuickItem ? 'Adding…' : 'Add to cart'}
+                  </button>
+                </form>
+                <p className="mt-2 text-[11px] text-violet-600">Saved as a product with 0 stock — update inventory later from Products.</p>
+              </div>
+            )}
           </div>
 
           {/* Cart */}
@@ -395,11 +487,13 @@ export default function POSClient({ currency, businessStateCode }: Props) {
                             </td>
                             <td className="px-3 py-2">
                               <Input
-                                type="number" min={1} max={line.stockAvailable} value={line.qty}
+                                type="number" min={1} value={line.qty}
                                 onChange={(e) => {
                                   const v = parseInt(e.target.value, 10);
                                   if (isNaN(v) || v < 1) return;
-                                  if (v > line.stockAvailable) { toast.error(`Only ${line.stockAvailable} in stock`); return; }
+                                  if (!line.manualItem && v > line.stockAvailable) {
+                                    toast.error(`Only ${line.stockAvailable} in stock`); return;
+                                  }
                                   updateLine(line.productId, { qty: v });
                                 }}
                                 className="h-8 w-16 text-right ml-auto"
@@ -419,7 +513,15 @@ export default function POSClient({ currency, businessStateCode }: Props) {
                                 className="h-8 w-20 text-right ml-auto"
                               />
                             </td>
-                            <td className="px-3 py-2.5 text-right text-stone-500 font-mono text-xs">{line.gstRate}%</td>
+                            <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                              <select
+                                value={line.gstRate}
+                                onChange={(e) => updateLine(line.productId, { gstRate: parseFloat(e.target.value) })}
+                                className="h-8 w-20 rounded border border-stone-200 bg-white text-xs text-stone-700 text-right px-1 focus:border-violet-400 focus:outline-none ml-auto block"
+                              >
+                                {[0, 5, 12, 18, 28].map((r) => <option key={r} value={r}>{r}%</option>)}
+                              </select>
+                            </td>
                             <td className="px-4 py-2.5 text-right font-mono text-stone-900 tabular-nums">{formatMoney(lineTotal, currency)}</td>
                             <td className="px-2">
                               <button

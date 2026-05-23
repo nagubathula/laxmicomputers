@@ -14,6 +14,7 @@ export type CartLineInput = {
   unitPrice: number;     // pre-tax, post-discount per-unit price the cashier wants to apply
   discount?: number;     // absolute, per-line
   serialIds?: string[];  // selected serial-unit ids when product tracks serials
+  skipStockCheck?: boolean; // true for manually-added items sold before GRN
 };
 
 export type CreateInvoiceInput = {
@@ -178,7 +179,7 @@ export async function createInvoice(input: CreateInvoiceInput) {
     const p = productById.get(line.productId);
     if (!p) throw new Error(`Product missing in cart: ${line.productId}`);
     if (line.qty <= 0) throw new Error(`Invalid quantity for "${p.name}".`);
-    if ((p.stock_qty ?? 0) < line.qty) {
+    if (!line.skipStockCheck && (p.stock_qty ?? 0) < line.qty) {
       throw new Error(`Insufficient stock for "${p.name}". Available: ${p.stock_qty}, requested: ${line.qty}.`);
     }
 

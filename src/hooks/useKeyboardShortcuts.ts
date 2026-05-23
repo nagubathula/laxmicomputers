@@ -73,10 +73,10 @@ export function useKeyboardShortcuts(shortcuts: ShortcutMap, options: Options = 
       const isEscape = e.key === 'Escape';
       const isCommandLike = hasModifier || isFunctionKey || isEscape;
 
-      if (ignoreInputs && !isCommandLike) {
-        // Only suppress printable shortcuts when an input is focused.
-        // E.g. typing "+" inside customer search shouldn't bump qty.
-        if (PRINTABLE_KEY_RX.test(e.key) && isEditableTarget(e.target)) return;
+      if (ignoreInputs && !isCommandLike && isEditableTarget(e.target)) {
+        // When any input/textarea/select has focus, suppress ALL non-command shortcuts.
+        // This covers printable keys (+/-/digits), Backspace, Delete, Arrow keys, etc.
+        return;
       }
 
       e.preventDefault();
