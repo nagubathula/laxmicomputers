@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import { formatMoney, type Currency } from '@/lib/money';
+import { type Currency } from '@/lib/money';
+import { pdfMoney } from '@/lib/pdfMoney';
 
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 10, fontFamily: 'Helvetica', color: '#0f172a' },
@@ -104,26 +105,26 @@ export function QuotePDF({ quote }: { quote: QuoteDoc }) {
               <Text style={[styles.td, styles.colDesc]}>{l.product_name}</Text>
               <Text style={[styles.td, styles.colHsn]}>{l.hsn_code ?? '-'}</Text>
               <Text style={[styles.td, styles.colQty]}>{l.qty}</Text>
-              <Text style={[styles.td, styles.colRate]}>{formatMoney(l.unit_price, c, { withSymbol: false })}</Text>
+              <Text style={[styles.td, styles.colRate]}>{pdfMoney(l.unit_price, c, false)}</Text>
               <Text style={[styles.td, styles.colGst]}>{l.gst_rate}%</Text>
-              <Text style={[styles.td, styles.colAmt]}>{formatMoney(l.line_total, c, { withSymbol: false })}</Text>
+              <Text style={[styles.td, styles.colAmt]}>{pdfMoney(l.line_total, c, false)}</Text>
             </View>
           ))}
         </View>
 
         <View style={styles.totalsBlock}>
           <View style={styles.totalsTable}>
-            <View style={styles.totalRow}><Text>Subtotal</Text><Text>{formatMoney(quote.subtotal, c)}</Text></View>
-            {quote.discount_total > 0 && <View style={styles.totalRow}><Text>Discount</Text><Text>− {formatMoney(quote.discount_total, c)}</Text></View>}
+            <View style={styles.totalRow}><Text>Subtotal</Text><Text>{pdfMoney(quote.subtotal, c)}</Text></View>
+            {quote.discount_total > 0 && <View style={styles.totalRow}><Text>Discount</Text><Text>− {pdfMoney(quote.discount_total, c)}</Text></View>}
             {quote.is_inter_state ? (
-              <View style={styles.totalRow}><Text>IGST</Text><Text>{formatMoney(quote.igst_total, c)}</Text></View>
+              <View style={styles.totalRow}><Text>IGST</Text><Text>{pdfMoney(quote.igst_total, c)}</Text></View>
             ) : (
               <>
-                <View style={styles.totalRow}><Text>CGST</Text><Text>{formatMoney(quote.cgst_total, c)}</Text></View>
-                <View style={styles.totalRow}><Text>SGST</Text><Text>{formatMoney(quote.sgst_total, c)}</Text></View>
+                <View style={styles.totalRow}><Text>CGST</Text><Text>{pdfMoney(quote.cgst_total, c)}</Text></View>
+                <View style={styles.totalRow}><Text>SGST</Text><Text>{pdfMoney(quote.sgst_total, c)}</Text></View>
               </>
             )}
-            <View style={styles.totalRowBold}><Text>Total</Text><Text>{formatMoney(quote.grand_total, c)}</Text></View>
+            <View style={styles.totalRowBold}><Text>Total</Text><Text>{pdfMoney(quote.grand_total, c)}</Text></View>
           </View>
         </View>
 

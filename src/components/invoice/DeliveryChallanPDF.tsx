@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import { formatMoney, type Currency } from '@/lib/money';
+import { type Currency } from '@/lib/money';
+import { pdfMoney } from '@/lib/pdfMoney';
 
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 10, fontFamily: 'Helvetica', color: '#0f172a' },
@@ -136,8 +137,8 @@ export function DeliveryChallanPDF({ dc, currency = 'INR' }: { dc: DCDoc; curren
               <Text style={[styles.td, styles.colDesc]}>{l.product_name}</Text>
               <Text style={[styles.td, styles.colHsn]}>{l.hsn_code ?? '-'}</Text>
               <Text style={[styles.td, styles.colQty]}>{l.qty}</Text>
-              <Text style={[styles.td, styles.colRate]}>{formatMoney(l.unit_price, currency, { withSymbol: false })}</Text>
-              <Text style={[styles.td, styles.colAmt]}>{formatMoney(l.line_total, currency, { withSymbol: false })}</Text>
+              <Text style={[styles.td, styles.colRate]}>{pdfMoney(l.unit_price, currency, false)}</Text>
+              <Text style={[styles.td, styles.colAmt]}>{pdfMoney(l.line_total, currency, false)}</Text>
             </View>
           ))}
         </View>
@@ -145,7 +146,7 @@ export function DeliveryChallanPDF({ dc, currency = 'INR' }: { dc: DCDoc; curren
         <View style={styles.totalRow}>
           <View style={styles.totalBox}>
             <Text style={{ fontWeight: 700 }}>Total goods value</Text>
-            <Text style={{ fontWeight: 700, fontFamily: 'Helvetica' }}>{formatMoney(dc.goods_value, currency)}</Text>
+            <Text style={{ fontWeight: 700, fontFamily: 'Helvetica' }}>{pdfMoney(dc.goods_value, currency)}</Text>
           </View>
         </View>
 

@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import { useBarcodeWedge } from '@/hooks/useBarcodeWedge';
 import { createProduct } from '@/app/admin/actions';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 
 const selectClass =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
@@ -102,8 +103,8 @@ export default function NewProductPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="image_url">Image URL</Label>
-            <Input id="image_url" name="image_url" type="url" placeholder="https://example.com/image.jpg" />
+            <Label>Product Image</Label>
+            <ImageUpload />
           </div>
 
           <div className="space-y-2">

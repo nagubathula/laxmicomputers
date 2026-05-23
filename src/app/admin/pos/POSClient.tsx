@@ -127,7 +127,14 @@ export default function POSClient({ currency, businessStateCode }: Props) {
     });
   };
 
-  useBarcodeWedge({ onScan: handleScannedBarcode, disabled: scannerOpen });
+  // Main wedge: disabled when camera scanner OR quick-product panel is capturing scans
+  useBarcodeWedge({ onScan: handleScannedBarcode, disabled: scannerOpen || productPanelOpen });
+
+  // Panel wedge: fills the barcode field in the "New product" slide-over
+  useBarcodeWedge({
+    onScan: (code) => setQpBarcode(code),
+    disabled: !productPanelOpen,
+  });
 
   // Customer search (debounced)
   useEffect(() => {
@@ -903,12 +910,16 @@ export default function POSClient({ currency, businessStateCode }: Props) {
               </div>
               <div>
                 <label className="text-xs font-medium text-stone-600 block mb-1.5">Barcode (optional)</label>
-                <input
-                  value={qpBarcode}
-                  onChange={(e) => setQpBarcode(e.target.value)}
-                  placeholder="Leave blank to skip"
-                  className="h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
-                />
+                <div className="relative">
+                  <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 pointer-events-none" />
+                  <input
+                    value={qpBarcode}
+                    onChange={(e) => setQpBarcode(e.target.value)}
+                    placeholder="Scan or type barcode"
+                    className="h-10 w-full rounded-lg border border-stone-300 bg-white pl-9 pr-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-stone-400">Hardware scanner will fill this automatically</p>
               </div>
               <p className="text-[11px] text-stone-400">Product is saved and added to cart immediately. You can edit full details later from Products.</p>
             </div>

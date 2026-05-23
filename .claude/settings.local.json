@@ -11,7 +11,8 @@
       "Bash(Move-Item -Path \"src\\\\app\\\\login\" -Destination \"src\\\\app\\\\\\(storefront\\)\\\\login\")",
       "Bash(Move-Item -Path \"src\\\\app\\\\signup\" -Destination \"src\\\\app\\\\\\(storefront\\)\\\\signup\")",
       "Bash(Move-Item -Path \"src\\\\app\\\\products\" -Destination \"src\\\\app\\\\\\(storefront\\)\\\\products\")",
-      "Bash(ls \"C:\\\\Users\\\\satya\\\\Documents\\\\GitHub\\\\laxmicomputers\\\\src\\\\app\" 2>/dev/null || ls /mnt/c/Users/satya/Documents/GitHub/laxmicomputers/src/app 2>/dev/null)"
+      "Bash(ls \"C:\\\\Users\\\\satya\\\\Documents\\\\GitHub\\\\laxmicomputers\\\\src\\\\app\" 2>/dev/null || ls /mnt/c/Users/satya/Documents/GitHub/laxmicomputers/src/app 2>/dev/null)",
+      "Bash(npm uninstall *)"
     ]
   }
 }
