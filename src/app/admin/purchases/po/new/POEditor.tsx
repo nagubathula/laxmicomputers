@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Search, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Search, CheckCircle2, Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ShortcutsOverlay, { type ShortcutGroup } from '@/components/ShortcutsOverlay';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { formatMoney, round2, type Currency } from '@/lib/money';
 import { computeLineGst, isInterState } from '@/lib/gst';
 import { createPurchaseOrder, searchProductsForPO, searchSuppliers, type POLineInput } from '../actions';
@@ -29,6 +31,10 @@ export default function POEditor({ currency, businessStateCode }: Props) {
   const [notes, setNotes] = useState('');
   const [toast, setToast] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [selectedIdx, setSelectedIdx] = useState(-1);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const productInputRef = useRef<HTMLInputElement | null>(null);
+  const supplierInputRef = useRef<HTMLInputElement | null>(null);
   const tt = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = (kind: 'error' | 'success', text: string) => {
@@ -103,12 +109,67 @@ export default function POEditor({ currency, businessStateCode }: Props) {
     });
   };
 
+  const bumpQty = (delta: number) => {
+    if (selectedIdx < 0 || selectedIdx >= lines.length) return;
+    const line = lines[selectedIdx];
+    const next = line.qty + delta;
+    if (next < 1) { setLines(prev => prev.filter((_, i) => i !== selectedIdx)); setSelectedIdx(-1); return; }
+    setLines(prev => prev.map((l, i) => i === selectedIdx ? { ...l, qty: next } : l));
+  };
+
+  useKeyboardShortcuts({
+    'f1': () => productInputRef.current?.focus(),
+    'f2': () => { setSupplier(null); setTimeout(() => supplierInputRef.current?.focus(), 0); },
+    'f12': () => submit('sent'),
+    'mod+enter': () => submit('sent'),
+    'mod+s': () => submit('draft'),
+    'escape': () => { if (shortcutsOpen) setShortcutsOpen(false); else if (selectedIdx >= 0) setSelectedIdx(-1); else (document.activeElement as HTMLElement)?.blur?.(); },
+    'arrowdown': () => setSelectedIdx(i => Math.min(lines.length - 1, i + 1)),
+    'arrowup': () => setSelectedIdx(i => Math.max(0, (i < 0 ? lines.length : i) - 1)),
+    '+': () => bumpQty(1),
+    '=': () => bumpQty(1),
+    '-': () => bumpQty(-1),
+    'delete': () => { if (selectedIdx < 0) return; setLines(prev => prev.filter((_, i) => i !== selectedIdx)); setSelectedIdx(-1); },
+    '?': () => setShortcutsOpen(true),
+    'shift+?': () => setShortcutsOpen(true),
+  });
+
+  useEffect(() => {
+    if (lines.length > 0 && selectedIdx < 0) setSelectedIdx(lines.length - 1);
+    else if (lines.length === 0 && selectedIdx !== -1) setSelectedIdx(-1);
+    else if (selectedIdx >= lines.length) setSelectedIdx(lines.length - 1);
+  }, [lines.length, selectedIdx]);
+
+  const shortcutGroups: ShortcutGroup[] = [
+    { title: 'Focus', items: [
+      { keys: ['F1'], description: 'Focus product search' },
+      { keys: ['F2'], description: 'Focus supplier search' },
+      { keys: ['Esc'], description: 'Clear selection / close' },
+    ]},
+    { title: 'Cart', items: [
+      { keys: ['↑'], description: 'Previous line' },
+      { keys: ['↓'], description: 'Next line' },
+      { keys: ['+'], description: 'Increase qty' },
+      { keys: ['−'], description: 'Decrease qty' },
+      { keys: ['Del'], description: 'Remove line' },
+    ]},
+    { title: 'Save', items: [
+      { keys: ['F12'], description: 'Save & send to supplier' },
+      { keys: ['Ctrl', '↵'], description: 'Save & send (alt)' },
+      { keys: ['Ctrl', 'S'], description: 'Save as draft' },
+      { keys: ['?'], description: 'This help' },
+    ]},
+  ];
+
   return (
     <div className="container mx-auto p-4 lg:p-8 max-w-6xl">
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <Link href="/admin/purchases" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-navy-900">
           <ArrowLeft className="h-4 w-4" /> Back to Purchases
         </Link>
+        <button type="button" onClick={() => setShortcutsOpen(true)} className="text-xs text-slate-500 hover:text-blue-600 inline-flex items-center gap-1">
+          <Keyboard className="h-3.5 w-3.5" /> Shortcuts
+        </button>
       </div>
 
       <h1 className="text-3xl font-bold text-navy-900 mb-6">New Purchase Order</h1>
@@ -131,7 +192,7 @@ export default function POEditor({ currency, businessStateCode }: Props) {
               </div>
             ) : (
               <div className="relative">
-                <Input value={supplierTerm} onChange={(e) => setSupplierTerm(e.target.value)} placeholder="Search supplier by name…" />
+                <Input ref={supplierInputRef} value={supplierTerm} onChange={(e) => setSupplierTerm(e.target.value)} placeholder="Search supplier by name…  [F2]" />
                 {supplierResults.length > 0 && (
                   <div className="absolute top-full left-0 right-0 z-10 mt-1 max-h-64 overflow-auto rounded-md border bg-white shadow-lg">
                     {supplierResults.map(s => (
@@ -151,7 +212,7 @@ export default function POEditor({ currency, businessStateCode }: Props) {
           <div className="rounded-md border bg-white p-4 shadow-sm">
             <Label>Add product</Label>
             <div className="relative mt-2">
-              <Input value={productTerm} onChange={(e) => setProductTerm(e.target.value)} placeholder="Search by name or barcode…" />
+              <Input ref={productInputRef} value={productTerm} onChange={(e) => setProductTerm(e.target.value)} placeholder="Search by name or barcode…  [F1]" />
               <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               {productResults.length > 0 && (
                 <div className="absolute top-full left-0 right-0 z-10 mt-1 max-h-64 overflow-auto rounded-md border bg-white shadow-lg">
@@ -189,8 +250,9 @@ export default function POEditor({ currency, businessStateCode }: Props) {
                   ) : lines.map((line, i) => {
                     const b = computeLineGst({ qty: line.qty, unitPrice: line.unitCost, gstRate: line.gstRate, interState });
                     const update = (patch: Partial<Line>) => setLines(prev => prev.map((l, idx) => idx === i ? { ...l, ...patch } : l));
+                    const isSel = i === selectedIdx;
                     return (
-                      <tr key={line.productId} className="hover:bg-slate-50">
+                      <tr key={line.productId} className={`cursor-pointer hover:bg-slate-50 ${isSel ? 'bg-blue-50 ring-1 ring-blue-200' : ''}`} onClick={() => setSelectedIdx(i)}>
                         <td className="px-4 py-3">
                           <div className="font-medium">{line.name}</div>
                           {line.hsn && <div className="text-xs text-slate-400">HSN {line.hsn}</div>}
@@ -259,10 +321,12 @@ export default function POEditor({ currency, businessStateCode }: Props) {
 
           <div className="space-y-2">
             <Button type="button" onClick={() => submit('sent')} disabled={pending || lines.length === 0} className="w-full bg-blue-600 hover:bg-blue-700">
-              {pending ? 'Saving…' : 'Save & send to supplier'}
+              <span>{pending ? 'Saving…' : 'Save & send to supplier'}</span>
+              <kbd className="ml-2 px-1.5 py-0.5 rounded border border-white/30 bg-white/10 font-mono text-[10px] font-normal">F12</kbd>
             </Button>
             <Button type="button" variant="outline" onClick={() => submit('draft')} disabled={pending || lines.length === 0} className="w-full">
-              Save as draft
+              <span>Save as draft</span>
+              <kbd className="ml-2 px-1.5 py-0.5 rounded border border-slate-300 bg-slate-100 font-mono text-[10px] font-normal">Ctrl S</kbd>
             </Button>
           </div>
         </div>
@@ -276,6 +340,8 @@ export default function POEditor({ currency, businessStateCode }: Props) {
           {toast.text}
         </div>
       )}
+
+      <ShortcutsOverlay open={shortcutsOpen} groups={shortcutGroups} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }

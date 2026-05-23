@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, PackagePlus } from 'lucide-react';
+import { ArrowLeft, PackagePlus, Download } from 'lucide-react';
 import { createClient } from '@/utils/supabase/server';
 import { requireUser } from '@/lib/auth';
 import { formatMoney, type Currency } from '@/lib/money';
@@ -34,13 +34,18 @@ export default async function PODetailPage(props: { params: Promise<{ id: string
         <Link href="/admin/purchases/po" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-navy-900">
           <ArrowLeft className="h-4 w-4" /> Back to POs
         </Link>
-        {(po.status === 'sent' || po.status === 'partial') && (
-          <Link href={`/admin/purchases/grn/new?po=${po.id}`}>
-            <Button className="bg-emerald-600 hover:bg-emerald-700">
-              <PackagePlus className="h-4 w-4 mr-1" /> Receive Goods
-            </Button>
+        <div className="flex items-center gap-2">
+          <Link href={`/api/purchases/po/${po.id}/pdf`} target="_blank" className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">
+            <Download className="h-4 w-4" /> PDF
           </Link>
-        )}
+          {(po.status === 'sent' || po.status === 'partial') && (
+            <Link href={`/admin/purchases/grn/new?po=${po.id}`}>
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <PackagePlus className="h-4 w-4 mr-1" /> Receive Goods
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">

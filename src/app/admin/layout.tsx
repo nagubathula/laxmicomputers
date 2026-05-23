@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LogOut, LayoutDashboard, ScanLine, Users, FileText, Truck, BarChart3, ShieldAlert, Wrench, ClipboardList, Hash, History } from 'lucide-react';
+import { LogOut, LayoutDashboard, ScanLine, Users, FileText, Truck, BarChart3, ShieldAlert, Wrench, ClipboardList, Hash, History, PackageCheck } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { logout } from '@/app/login/actions';
 
@@ -30,6 +30,9 @@ export default async function AdminLayout({
               </Link>
               <Link href="/admin/quotes" className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-blue-600">
                 <ClipboardList className="h-4 w-4" /> Quotes
+              </Link>
+              <Link href="/admin/delivery" className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-blue-600">
+                <PackageCheck className="h-4 w-4" /> Delivery
               </Link>
               <Link href="/admin/service" className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-blue-600">
                 <Wrench className="h-4 w-4" /> Service
