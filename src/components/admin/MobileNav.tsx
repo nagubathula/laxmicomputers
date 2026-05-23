@@ -26,7 +26,7 @@ const GROUPS: Group[] = [
   {
     title: 'Stock',
     items: [
-      { href: '/admin', label: 'Products', icon: Box },
+      { href: '/admin/products', label: 'Products', icon: Box },
       { href: '/admin/purchases', label: 'Purchases', icon: Truck },
       { href: '/admin/serials', label: 'Serials', icon: Hash },
     ],
@@ -69,8 +69,7 @@ export default function MobileNav({
     return user.role === 'admin' || user.role === 'manager';
   };
 
-  const isActive = (href: string) =>
-    href === '/admin' ? pathname === '/admin' : pathname === href || pathname.startsWith(href + '/');
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
   return (
     <>
@@ -97,12 +96,12 @@ export default function MobileNav({
 
             <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5" onClick={() => setOpen(false)}>
               <Link
-                href="/admin"
+                href="/admin/pos"
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  pathname === '/admin' ? 'bg-violet-50 text-violet-800' : 'text-stone-700 hover:bg-stone-100'
+                  pathname === '/admin/pos' ? 'bg-violet-50 text-violet-800' : 'text-stone-700 hover:bg-stone-100'
                 }`}
               >
-                <LayoutDashboard className="h-4 w-4" /> Dashboard
+                <LayoutDashboard className="h-4 w-4" /> POS
               </Link>
 
               {GROUPS.filter(canSee).map((group) => (

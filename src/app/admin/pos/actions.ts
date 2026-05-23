@@ -66,6 +66,62 @@ export async function searchCustomers(term: string) {
   return { ok: true as const, customers: data ?? [] };
 }
 
+/** Quick customer creation from POS — name + phone only. */
+export async function quickCreateCustomer(name: string, phone: string) {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { ok: false as const, error: 'Unauthorized' };
+
+  const trimmedName = name.trim();
+  const trimmedPhone = phone.trim();
+  if (!trimmedName) return { ok: false as const, error: 'Name is required.' };
+
+  const { data, error } = await supabase
+    .from('customers')
+    .insert({ name: trimmedName, phone: trimmedPhone || null, created_by: user.id })
+    .select('id, name, phone, gstin, state, state_code')
+    .single();
+
+  if (error) return { ok: false as const, error: error.message };
+  revalidatePath('/admin/customers');
+  return { ok: true as const, customer: data };
+}
+
+/** Quick product creation from POS — minimum required fields. */
+export async function quickAddProduct(input: {
+  name: string;
+  price: number;
+  category: string;
+  stock_qty: number;
+  gst_rate: number;
+  barcode?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { ok: false as const, error: 'Unauthorized' };
+
+  if (!input.name.trim()) return { ok: false as const, error: 'Product name is required.' };
+  if (input.price < 0) return { ok: false as const, error: 'Price must be non-negative.' };
+
+  const { data, error } = await supabase
+    .from('products')
+    .insert({
+      name: input.name.trim(),
+      price: input.price,
+      category: input.category.trim() || 'General',
+      stock_qty: input.stock_qty,
+      gst_rate: input.gst_rate,
+      barcode: input.barcode?.trim() || null,
+      created_by: user.id,
+    })
+    .select('id, name, price, gst_rate, hsn_code, stock_qty, barcode, tracks_serials')
+    .single();
+
+  if (error) return { ok: false as const, error: error.message };
+  revalidatePath('/admin/products');
+  return { ok: true as const, product: data };
+}
+
 export async function createInvoice(input: CreateInvoiceInput) {
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();

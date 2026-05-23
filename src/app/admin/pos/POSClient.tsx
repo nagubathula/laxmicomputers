@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { ScanBarcode, Search, Trash2, UserPlus, Keyboard, ChevronDown, X, Receipt } from 'lucide-react';
+import { ScanBarcode, Search, Trash2, UserPlus, Keyboard, ChevronDown, X, Receipt, Plus, PackagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import BarcodeScanner from '@/components/BarcodeScanner';
@@ -13,7 +13,7 @@ import { useBarcodeWedge } from '@/hooks/useBarcodeWedge';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { formatMoney, round2, roundOffDelta, type Currency } from '@/lib/money';
 import { computeLineGst, isInterState } from '@/lib/gst';
-import { createInvoice, findProductByBarcode, listAvailableSerials, searchCustomers, type CartLineInput } from './actions';
+import { createInvoice, findProductByBarcode, listAvailableSerials, searchCustomers, quickCreateCustomer, quickAddProduct, type CartLineInput } from './actions';
 
 type CartLine = {
   productId: string;
@@ -68,6 +68,20 @@ export default function POSClient({ currency, businessStateCode }: Props) {
   const [pending, startTransition] = useTransition();
   const [selectedLineIndex, setSelectedLineIndex] = useState<number>(-1);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // Inline customer creation
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [savingCustomer, setSavingCustomer] = useState(false);
+  // Quick product panel
+  const [productPanelOpen, setProductPanelOpen] = useState(false);
+  const [qpName, setQpName] = useState('');
+  const [qpPrice, setQpPrice] = useState('');
+  const [qpCategory, setQpCategory] = useState('');
+  const [qpStock, setQpStock] = useState('1');
+  const [qpGst, setQpGst] = useState('18');
+  const [qpBarcode, setQpBarcode] = useState('');
+  const [savingProduct, setSavingProduct] = useState(false);
   const barcodeInputRef = useRef<HTMLInputElement | null>(null);
   const customerInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -135,6 +149,40 @@ export default function POSClient({ currency, businessStateCode }: Props) {
   const updateLine = (productId: string, patch: Partial<CartLine>) =>
     setCart((prev) => prev.map((l) => l.productId === productId ? { ...l, ...patch } : l));
   const removeLine = (productId: string) => setCart((prev) => prev.filter((l) => l.productId !== productId));
+
+  const handleCreateCustomer = async () => {
+    if (!newCustomerName.trim()) return;
+    setSavingCustomer(true);
+    const res = await quickCreateCustomer(newCustomerName, newCustomerPhone);
+    setSavingCustomer(false);
+    if (!res.ok) { toast.error(res.error); return; }
+    setCustomer(res.customer as any);
+    setSearchTerm(''); setSearchResults([]);
+    setShowNewCustomer(false); setNewCustomerName(''); setNewCustomerPhone('');
+    toast.success(`Customer "${res.customer.name}" created`);
+  };
+
+  const handleQuickAddProduct = async () => {
+    if (!qpName.trim() || !qpPrice) return;
+    setSavingProduct(true);
+    const res = await quickAddProduct({
+      name: qpName, price: parseFloat(qpPrice), category: qpCategory,
+      stock_qty: parseInt(qpStock) || 0, gst_rate: parseFloat(qpGst) || 0,
+      barcode: qpBarcode || undefined,
+    });
+    setSavingProduct(false);
+    if (!res.ok) { toast.error(res.error); return; }
+    const p = res.product;
+    setCart((prev) => [...prev, {
+      productId: p.id, name: p.name, qty: 1, unitPrice: Number(p.price),
+      discount: 0, gstRate: Number(p.gst_rate ?? 0), hsn: null,
+      stockAvailable: p.stock_qty, tracksSerials: false,
+      availableSerials: [], selectedSerialIds: [],
+    }]);
+    setProductPanelOpen(false);
+    setQpName(''); setQpPrice(''); setQpCategory(''); setQpStock('1'); setQpGst('18'); setQpBarcode('');
+    toast.success(`"${p.name}" added to cart`);
+  };
 
   // Bill-level override: owner types the final amount they want to charge.
   // Discount = difference between computed grand and the override.
@@ -299,6 +347,14 @@ export default function POSClient({ currency, businessStateCode }: Props) {
               <Button type="button" variant="outline" className="h-11 px-3" onClick={() => setScannerOpen(true)}>
                 <ScanBarcode className="h-4 w-4 mr-1.5" /> Camera
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 px-3 text-violet-700 border-violet-200 hover:bg-violet-50"
+                onClick={() => setProductPanelOpen(true)}
+              >
+                <PackagePlus className="h-4 w-4 mr-1.5" /> New product
+              </Button>
             </div>
           </div>
 
@@ -433,12 +489,7 @@ export default function POSClient({ currency, businessStateCode }: Props) {
         <div className="space-y-4">
           {/* Customer */}
           <div className="admin-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-500">Customer</h3>
-              <a href="/admin/customers/new" target="_blank" className="text-xs text-violet-600 hover:text-violet-700 inline-flex items-center gap-1">
-                <UserPlus className="h-3 w-3" /> New
-              </a>
-            </div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-500 mb-3">Customer</h3>
             {customer ? (
               <div className="rounded-lg bg-stone-50 border border-stone-200 p-3">
                 <div className="flex items-start justify-between">
@@ -454,6 +505,40 @@ export default function POSClient({ currency, businessStateCode }: Props) {
                   </button>
                 </div>
               </div>
+            ) : showNewCustomer ? (
+              /* Inline quick-create form */
+              <div className="space-y-2">
+                <input
+                  autoFocus
+                  value={newCustomerName}
+                  onChange={(e) => setNewCustomerName(e.target.value)}
+                  placeholder="Customer name *"
+                  className="h-9 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                />
+                <input
+                  value={newCustomerPhone}
+                  onChange={(e) => setNewCustomerPhone(e.target.value)}
+                  placeholder="Phone (optional)"
+                  className="h-9 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                />
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleCreateCustomer}
+                    disabled={savingCustomer || !newCustomerName.trim()}
+                    className="flex-1 h-9 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm font-medium transition-colors"
+                  >
+                    {savingCustomer ? 'Saving…' : 'Create & select'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowNewCustomer(false); setNewCustomerName(''); setNewCustomerPhone(''); }}
+                    className="h-9 px-3 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 pointer-events-none" />
@@ -465,22 +550,49 @@ export default function POSClient({ currency, businessStateCode }: Props) {
                   className="h-10 w-full rounded-lg border border-stone-300 bg-white pl-9 pr-12 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 admin-kbd">F2</span>
-                {searchResults.length > 0 && (
+
+                {/* Dropdown: results + always-visible "New customer" row */}
+                {(searchResults.length > 0 || searchTerm.trim()) && (
                   <div className="absolute left-0 right-0 top-full mt-1 z-10 rounded-lg border border-stone-200 bg-white shadow-lg max-h-64 overflow-auto">
                     {searchResults.map((c) => (
                       <button
                         key={c.id}
                         type="button"
                         onClick={() => { setCustomer(c); setSearchTerm(''); setSearchResults([]); }}
-                        className="w-full text-left px-3 py-2 hover:bg-stone-50 border-b border-stone-100 last:border-0"
+                        className="w-full text-left px-3 py-2.5 hover:bg-stone-50 border-b border-stone-100 last:border-0"
                       >
                         <div className="font-medium text-sm text-stone-900">{c.name}</div>
-                        <div className="text-xs text-stone-500">{c.phone ?? ''} {c.gstin ? ` · ${c.gstin}` : ''}</div>
+                        <div className="text-xs text-stone-500">{c.phone ?? ''}{c.gstin ? ` · ${c.gstin}` : ''}</div>
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewCustomerName(searchTerm);
+                        setSearchTerm(''); setSearchResults([]);
+                        setShowNewCustomer(true);
+                      }}
+                      className="w-full text-left px-3 py-2.5 flex items-center gap-2 text-violet-700 hover:bg-violet-50 border-t border-stone-100"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span className="text-sm font-medium">
+                        {searchTerm.trim() ? `Create "${searchTerm.trim()}"` : 'New customer'}
+                      </span>
+                    </button>
                   </div>
                 )}
-                <p className="mt-2 text-[11px] text-stone-400">Leave empty for walk-in</p>
+                {!searchTerm && (
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-[11px] text-stone-400">Leave empty for walk-in</p>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewCustomer(true)}
+                      className="text-[11px] text-violet-600 hover:text-violet-700 inline-flex items-center gap-1"
+                    >
+                      <UserPlus className="h-3 w-3" /> New customer
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -619,6 +731,99 @@ export default function POSClient({ currency, businessStateCode }: Props) {
         onClose={() => setScannerOpen(false)}
       />
       <ShortcutsOverlay open={shortcutsOpen} groups={shortcutGroups} onClose={() => setShortcutsOpen(false)} />
+
+      {/* Quick product slide-over */}
+      {productPanelOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="flex-1 bg-black/30" onClick={() => setProductPanelOpen(false)} />
+          <div className="w-full max-w-sm bg-white flex flex-col shadow-2xl">
+            <div className="h-14 flex items-center justify-between px-5 border-b border-stone-200 shrink-0">
+              <h2 className="font-semibold text-stone-900">Quick add product</h2>
+              <button onClick={() => setProductPanelOpen(false)} className="p-2 -mr-2 text-stone-400 hover:text-stone-900">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div>
+                <label className="text-xs font-medium text-stone-600 block mb-1.5">Product name *</label>
+                <input
+                  autoFocus
+                  value={qpName}
+                  onChange={(e) => setQpName(e.target.value)}
+                  placeholder="e.g. RTX 4090"
+                  className="h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-stone-600 block mb-1.5">Price (₹) *</label>
+                  <input
+                    type="number" min={0} step="0.01"
+                    value={qpPrice}
+                    onChange={(e) => setQpPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-stone-600 block mb-1.5">GST rate (%)</label>
+                  <select
+                    value={qpGst}
+                    onChange={(e) => setQpGst(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-violet-500 focus:outline-none"
+                  >
+                    {[0, 5, 12, 18, 28].map((r) => (
+                      <option key={r} value={r}>{r}%</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-stone-600 block mb-1.5">Category</label>
+                  <input
+                    value={qpCategory}
+                    onChange={(e) => setQpCategory(e.target.value)}
+                    placeholder="e.g. Laptops"
+                    className="h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-stone-600 block mb-1.5">Stock qty</label>
+                  <input
+                    type="number" min={0}
+                    value={qpStock}
+                    onChange={(e) => setQpStock(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-stone-600 block mb-1.5">Barcode (optional)</label>
+                <input
+                  value={qpBarcode}
+                  onChange={(e) => setQpBarcode(e.target.value)}
+                  placeholder="Leave blank to skip"
+                  className="h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+                />
+              </div>
+              <p className="text-[11px] text-stone-400">Product is saved and added to cart immediately. You can edit full details later from Products.</p>
+            </div>
+
+            <div className="p-5 border-t border-stone-200 shrink-0">
+              <button
+                type="button"
+                onClick={handleQuickAddProduct}
+                disabled={savingProduct || !qpName.trim() || !qpPrice}
+                className="w-full h-11 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium text-sm transition-colors"
+              >
+                {savingProduct ? 'Saving…' : 'Save & add to cart'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
