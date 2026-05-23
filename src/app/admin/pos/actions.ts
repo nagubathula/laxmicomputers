@@ -6,7 +6,7 @@ import { computeLineGst, isInterState } from '@/lib/gst';
 import { round2, roundOffDelta } from '@/lib/money';
 import { nextInvoiceNumber } from '@/lib/invoiceNumber';
 import { recordStockMovement } from '@/lib/stock';
-import { markSerialsSold } from '@/lib/serials';
+import { markSerialsSold, recordReceivedSerials } from '@/lib/serials';
 
 export type CartLineInput = {
   productId: string;
@@ -79,7 +79,7 @@ export async function quickCreateCustomer(name: string, phone: string) {
 
   const { data, error } = await supabase
     .from('customers')
-    .insert({ name: trimmedName, phone: trimmedPhone || null, created_by: user.id })
+    .insert({ name: trimmedName, phone: trimmedPhone || null })
     .select('id, name, phone, gstin, state, state_code')
     .single();
 
@@ -121,6 +121,35 @@ export async function quickAddProduct(input: {
   if (error) return { ok: false as const, error: error.message };
   revalidatePath('/admin/products');
   return { ok: true as const, product: data };
+}
+
+/**
+ * Quick GRN from POS — records serial numbers as received into stock without
+ * a full goods-receipt document. Used when a serial-tracked product has no
+ * available units yet (stock came in informally before a proper GRN is raised).
+ */
+export async function inlineGRN(productId: string, serials: string[]) {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { ok: false as const, error: 'Unauthorized' };
+
+  const cleaned = Array.from(new Set(serials.map((s) => s.trim()).filter(Boolean)));
+  if (cleaned.length === 0) return { ok: false as const, error: 'Enter at least one serial number.' };
+
+  const result = await recordReceivedSerials(supabase, { productId, serials: cleaned, grnId: null });
+  if (!result.ok) return { ok: false as const, error: result.error };
+
+  // Return the now-available serial rows so the POS can select them immediately
+  const { data, error } = await supabase
+    .from('product_serials')
+    .select('id, serial_number')
+    .eq('product_id', productId)
+    .in('serial_number', cleaned)
+    .eq('status', 'available');
+
+  if (error) return { ok: false as const, error: error.message };
+  revalidatePath('/admin/products');
+  return { ok: true as const, serials: data ?? [], inserted: result.inserted, skipped: result.skipped };
 }
 
 export async function createInvoice(input: CreateInvoiceInput) {

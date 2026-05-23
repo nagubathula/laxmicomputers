@@ -13,7 +13,7 @@ import { useBarcodeWedge } from '@/hooks/useBarcodeWedge';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { formatMoney, round2, roundOffDelta, type Currency } from '@/lib/money';
 import { computeLineGst, isInterState } from '@/lib/gst';
-import { createInvoice, findProductByBarcode, listAvailableSerials, searchCustomers, quickCreateCustomer, quickAddProduct, type CartLineInput } from './actions';
+import { createInvoice, findProductByBarcode, listAvailableSerials, searchCustomers, quickCreateCustomer, quickAddProduct, inlineGRN, type CartLineInput } from './actions';
 
 type CartLine = {
   productId: string;
@@ -88,6 +88,10 @@ export default function POSClient({ currency, businessStateCode }: Props) {
   const [qpGst, setQpGst] = useState('18');
   const [qpBarcode, setQpBarcode] = useState('');
   const [savingProduct, setSavingProduct] = useState(false);
+  // Inline GRN (receive serials directly from POS when a serial-tracked product has no stock)
+  const [grnProductId, setGrnProductId] = useState<string | null>(null);
+  const [grnSerials, setGrnSerials] = useState('');
+  const [savingGrn, setSavingGrn] = useState(false);
   const barcodeInputRef = useRef<HTMLInputElement | null>(null);
   const customerInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -167,6 +171,25 @@ export default function POSClient({ currency, businessStateCode }: Props) {
   const updateLine = (productId: string, patch: Partial<CartLine>) =>
     setCart((prev) => prev.map((l) => l.productId === productId ? { ...l, ...patch } : l));
   const removeLine = (productId: string) => setCart((prev) => prev.filter((l) => l.productId !== productId));
+
+  const handleInlineGRN = async (productId: string) => {
+    const parsed = grnSerials.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+    if (parsed.length === 0) return;
+    setSavingGrn(true);
+    const res = await inlineGRN(productId, parsed);
+    setSavingGrn(false);
+    if (!res.ok) { toast.error(res.error); return; }
+    const line = cart.find((l) => l.productId === productId);
+    updateLine(productId, {
+      availableSerials: [...(line?.availableSerials ?? []), ...res.serials],
+      // Auto-select up to the line qty
+      selectedSerialIds: res.serials.slice(0, line?.qty ?? 1).map((s) => s.id),
+      stockAvailable: (line?.stockAvailable ?? 0) + res.inserted,
+    });
+    setGrnProductId(null);
+    setGrnSerials('');
+    toast.success(`${res.inserted} serial${res.inserted === 1 ? '' : 's'} received into stock${res.skipped > 0 ? ` · ${res.skipped} duplicate(s) skipped` : ''}`);
+  };
 
   const handleQuickItem = async () => {
     if (!quickItemDraft || !qiPrice) return;
@@ -550,7 +573,45 @@ export default function POSClient({ currency, businessStateCode }: Props) {
                                   </span>
                                 </div>
                                 {line.availableSerials.length === 0 ? (
-                                  <div className="text-xs text-amber-700">No serials in stock — record them via GRN first.</div>
+                                  grnProductId === line.productId ? (
+                                    <div className="space-y-2">
+                                      <textarea
+                                        autoFocus
+                                        value={grnSerials}
+                                        onChange={(e) => setGrnSerials(e.target.value)}
+                                        placeholder={"Enter serial numbers — one per line or comma-separated\ne.g. SN001\nSN002"}
+                                        className="w-full h-20 text-xs font-mono rounded border border-amber-300 bg-white px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"
+                                      />
+                                      <div className="flex gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleInlineGRN(line.productId)}
+                                          disabled={savingGrn || !grnSerials.trim()}
+                                          className="h-7 px-3 rounded bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-xs font-medium transition-colors"
+                                        >
+                                          {savingGrn ? 'Receiving…' : 'Receive into stock'}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => { setGrnProductId(null); setGrnSerials(''); }}
+                                          className="h-7 px-3 rounded border border-stone-200 text-stone-500 text-xs hover:bg-stone-50 transition-colors"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xs text-amber-700">No serials in stock</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => { setGrnProductId(line.productId); setGrnSerials(''); }}
+                                        className="text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900 transition-colors"
+                                      >
+                                        + Receive now
+                                      </button>
+                                    </div>
+                                  )
                                 ) : (
                                   <div className="flex flex-wrap gap-1.5">
                                     {line.availableSerials.map((s) => {

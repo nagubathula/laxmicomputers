@@ -9,5 +9,6 @@ export default async function SettingsPage() {
     .eq('id', 1)
     .single();
 
-  return <SettingsForm initial={settings ?? { id: 1, legal_name: 'Laxmi Computers', default_currency: 'INR', invoice_prefix: 'LC' }} />;
+  const initial = settings ?? { id: 1, legal_name: 'Laxmi Computers', default_currency: 'INR', invoice_prefix: 'LC' };
+  return <SettingsForm key={settings?.updated_at ?? 'default'} initial={initial} />;
 }
