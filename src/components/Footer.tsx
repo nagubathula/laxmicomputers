@@ -1,93 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Link as LinkIcon, Share2, Mail, Phone, Building2 } from "lucide-react";
+import { Cpu } from "lucide-react";
 
 export default function Footer() {
-  const pathname = usePathname();
-  const isProductPage = pathname?.includes('/products');
-
   return (
-    <footer className="bg-[#2a2e33] text-white mt-auto">
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          {/* Brand Col */}
-          <div className="space-y-6">
-            <h2 className="font-display font-bold text-2xl tracking-tight">Laksmi Computers</h2>
-            <p className="text-sm text-slate-300 leading-relaxed max-w-sm">
-              © 2024 Laksmi Computers. Expert Tech Sales & Service. Delivering precision computing solutions for professionals and enthusiasts since 1998.
-            </p>
-            <div className="flex gap-4">
-              <button className="p-2 border border-slate-700 hover:bg-slate-800 rounded-sm transition-colors text-slate-400">
-                <LinkIcon className="h-4 w-4" />
-              </button>
-              <button className="p-2 border border-slate-700 hover:bg-slate-800 rounded-sm transition-colors text-slate-400">
-                <Share2 className="h-4 w-4" />
-              </button>
+    <footer className="border-t border-slate-100 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
+          {/* Brand */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                <Cpu className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-bold text-slate-900">Laxmi Computers</span>
             </div>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Your trusted local tech partner — genuine hardware, expert repairs, and honest service since 2010.
+            </p>
           </div>
 
-          {/* Navigation Col */}
+          {/* Shop */}
           <div>
-            <h3 className="font-mono text-sm font-semibold tracking-wider text-slate-400 mb-6 uppercase">NAVIGATION</h3>
-            <ul className="space-y-3">
-              <li><Link href="#" className="text-sm text-slate-300 hover:text-white transition-colors">Store Hours</Link></li>
-              <li><Link href="/contact" className="text-sm text-slate-300 hover:text-white transition-colors">Location</Link></li>
-              <li><Link href="#" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">Service Tracking</Link></li>
-              <li><Link href="#" className="text-sm text-slate-300 hover:text-white transition-colors">Privacy Policy</Link></li>
-              <li><Link href="#" className="text-sm text-slate-300 hover:text-white transition-colors">Terms of Service</Link></li>
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-4">Shop</h3>
+            <ul className="space-y-2.5 text-sm text-slate-500">
+              <li><Link href="/products?category=laptops"     className="hover:text-blue-600 transition-colors">Laptops</Link></li>
+              <li><Link href="/products?category=components"  className="hover:text-blue-600 transition-colors">Components</Link></li>
+              <li><Link href="/products?category=peripherals" className="hover:text-blue-600 transition-colors">Peripherals</Link></li>
+              <li><Link href="/products?category=graphics-cards" className="hover:text-blue-600 transition-colors">Graphics Cards</Link></li>
+              <li><Link href="/products"                      className="hover:text-blue-600 transition-colors">All Products</Link></li>
             </ul>
           </div>
 
-          {/* Right Col */}
+          {/* Support */}
           <div>
-            {isProductPage ? (
-              <>
-                <h3 className="font-mono text-sm font-semibold tracking-wider text-slate-400 mb-6 uppercase">SUPPORT</h3>
-                <p className="text-sm text-slate-300 mb-6 leading-relaxed">
-                  Get technical assistance from our expert team. Available Mon-Sat 9:00 - 18:00.
-                </p>
-                <div className="border border-slate-600 bg-navy-900 p-6 rounded-sm">
-                  <h4 className="font-bold mb-2">Need a Custom Build?</h4>
-                  <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-                    Our technicians can design a workstation tailored to your professional needs.
-                  </p>
-                  <button className="bg-white text-navy-900 hover:bg-slate-100 px-4 py-2 text-sm font-bold rounded-sm transition-colors">
-                    Contact Expert
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3 className="font-mono text-sm font-semibold tracking-wider text-slate-400 mb-6 uppercase">Newsletter</h3>
-                <p className="text-sm text-slate-300 mb-4">Subscribe for technical deep-dives and inventory updates.</p>
-                <div className="flex gap-2">
-                  <input 
-                    type="email" 
-                    placeholder="Email address" 
-                    className="flex-1 bg-slate-800 border border-slate-700 text-white px-3 py-2 rounded-sm text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                  />
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-sm text-sm font-medium transition-colors">
-                    JOIN
-                  </button>
-                </div>
-                <div className="mt-6 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
-                  <span className="font-mono text-xs text-slate-400">Live Support Online</span>
-                </div>
-              </>
-            )}
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-4">Support</h3>
+            <ul className="space-y-2.5 text-sm text-slate-500">
+              <li><Link href="/contact" className="hover:text-blue-600 transition-colors">Service & Repair</Link></li>
+              <li><Link href="/contact" className="hover:text-blue-600 transition-colors">Contact Us</Link></li>
+              <li><Link href="/contact" className="hover:text-blue-600 transition-colors">Store Location</Link></li>
+            </ul>
           </div>
         </div>
-      </div>
 
-      {/* Bottom Footer */}
-      <div className="container mx-auto px-4 py-6 border-t border-slate-700 flex flex-col md:flex-row justify-between items-center text-xs text-slate-400 gap-4">
-        <p>&copy; 2024 Laksmi Computers. Expert Tech Sales & Service.</p>
-        <div className="flex gap-4 text-slate-300">
-          <Building2 className="w-4 h-4" />
-          <Phone className="w-4 h-4" />
+        <div className="border-t border-slate-100 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+          <p>© {new Date().getFullYear()} Laxmi Computers. All rights reserved.</p>
+          <p>GST-compliant billing · Authorised dealer · Same-day service</p>
         </div>
       </div>
     </footer>
