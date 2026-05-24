@@ -13,7 +13,9 @@
       "Bash(Move-Item -Path \"src\\\\app\\\\products\" -Destination \"src\\\\app\\\\\\(storefront\\)\\\\products\")",
       "Bash(ls \"C:\\\\Users\\\\satya\\\\Documents\\\\GitHub\\\\laxmicomputers\\\\src\\\\app\" 2>/dev/null || ls /mnt/c/Users/satya/Documents/GitHub/laxmicomputers/src/app 2>/dev/null)",
       "Bash(npm uninstall *)",
-      "Bash(npx supabase *)"
+      "Bash(npx supabase *)",
+      "Bash(dir \"app\\\\\\(storefront\\)\\\\products\\\\graphics-cards\")",
+      "Bash(npm run *)"
     ]
   }
 }
